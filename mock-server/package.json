@@ -1,0 +1,16 @@
+{
+  "name": "facture-ia-mock-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend factice (donnees en memoire) pour tester le frontend en local. N'est PAS le backend de production.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^2.0.1"
+  }
+}

@@ -1,0 +1,75 @@
+<script setup lang="ts">
+import { Mail, MapPin, Phone, Receipt } from 'lucide-vue-next'
+
+import BaseButton from '@/components/base/BaseButton.vue'
+import BaseCard from '@/components/base/BaseCard.vue'
+import type { Client } from '@/types'
+import { formatDate, getInitials } from '@/utils/formatters'
+
+interface Props {
+  client: Client
+}
+
+defineProps<Props>()
+
+const emit = defineEmits<{
+  edit: []
+  delete: []
+}>()
+</script>
+
+<template>
+  <BaseCard>
+    <template #actions>
+      <BaseButton variant="outline" size="sm" @click="emit('edit')">Modifier</BaseButton>
+      <BaseButton variant="danger" size="sm" @click="emit('delete')">Supprimer</BaseButton>
+    </template>
+
+    <div class="flex items-center gap-4">
+      <span
+        class="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700"
+      >
+        {{ getInitials(`${client.firstName} ${client.lastName}`) }}
+      </span>
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">
+          {{ client.firstName }} {{ client.lastName }}
+        </h2>
+        <p class="text-sm text-gray-500">Client depuis le {{ formatDate(client.createdAt) }}</p>
+      </div>
+    </div>
+
+    <dl class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="flex items-start gap-2">
+        <Mail class="mt-0.5 size-4 shrink-0 text-gray-400" aria-hidden="true" />
+        <div>
+          <dt class="text-xs text-gray-500">Email</dt>
+          <dd class="text-sm text-gray-900">{{ client.email || '-' }}</dd>
+        </div>
+      </div>
+      <div class="flex items-start gap-2">
+        <Phone class="mt-0.5 size-4 shrink-0 text-gray-400" aria-hidden="true" />
+        <div>
+          <dt class="text-xs text-gray-500">Telephone</dt>
+          <dd class="text-sm text-gray-900">{{ client.phone || '-' }}</dd>
+        </div>
+      </div>
+      <div class="flex items-start gap-2 sm:col-span-2">
+        <MapPin class="mt-0.5 size-4 shrink-0 text-gray-400" aria-hidden="true" />
+        <div>
+          <dt class="text-xs text-gray-500">Adresse</dt>
+          <dd class="text-sm text-gray-900">
+            {{ [client.address, client.city, client.country].filter(Boolean).join(', ') || '-' }}
+          </dd>
+        </div>
+      </div>
+      <div class="flex items-start gap-2">
+        <Receipt class="mt-0.5 size-4 shrink-0 text-gray-400" aria-hidden="true" />
+        <div>
+          <dt class="text-xs text-gray-500">Identifiant fiscal</dt>
+          <dd class="text-sm text-gray-900">{{ client.taxId || '-' }}</dd>
+        </div>
+      </div>
+    </dl>
+  </BaseCard>
+</template>
