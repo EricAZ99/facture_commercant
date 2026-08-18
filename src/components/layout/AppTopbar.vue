@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ChevronDown, LogOut, Menu } from 'lucide-vue-next'
+import { ChevronDown, LogOut, Menu, Search } from 'lucide-vue-next'
 import { onMounted, onUnmounted, ref } from 'vue'
 
+import AccessibilityMenu from '@/components/layout/AccessibilityMenu.vue'
+import NotificationBell from '@/components/layout/NotificationBell.vue'
 import { useAuth } from '@/composables'
 import { useAuthStore, useUiStore } from '@/stores'
 import { getInitials } from '@/utils/formatters'
@@ -26,6 +28,10 @@ async function onLogout(): Promise<void> {
   isMenuOpen.value = false
   await logoutAndRedirect()
 }
+
+function openCommandPalette(): void {
+  window.dispatchEvent(new CustomEvent('facture-ia:open-command-palette'))
+}
 </script>
 
 <template>
@@ -44,37 +50,55 @@ async function onLogout(): Promise<void> {
       <p class="truncate text-sm font-medium text-gray-900">{{ authStore.business?.name }}</p>
     </div>
 
-    <div ref="menuRef" class="relative">
+    <div class="flex items-center gap-1">
       <button
         type="button"
-        class="focus-ring flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100"
-        aria-label="Menu utilisateur"
-        :aria-expanded="isMenuOpen"
-        @click="isMenuOpen = !isMenuOpen"
+        class="focus-ring hidden items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-50 sm:flex"
+        @click="openCommandPalette"
       >
-        <span
-          class="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700"
-        >
-          {{ getInitials(`${authStore.user?.firstName ?? ''} ${authStore.user?.lastName ?? ''}`) }}
-        </span>
-        <span class="hidden text-sm font-medium text-gray-700 sm:inline">
-          {{ authStore.user?.firstName }} {{ authStore.user?.lastName }}
-        </span>
-        <ChevronDown class="size-4 text-gray-400" aria-hidden="true" />
+        <Search class="size-4" aria-hidden="true" />
+        Rechercher
+        <kbd class="rounded border border-gray-300 bg-gray-50 px-1 text-xs text-gray-400">
+          Ctrl+K
+        </kbd>
       </button>
+      <AccessibilityMenu />
+      <NotificationBell />
 
-      <div
-        v-if="isMenuOpen"
-        class="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-      >
+      <div ref="menuRef" class="relative">
         <button
           type="button"
-          class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-          @click="onLogout"
+          class="focus-ring flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100"
+          aria-label="Menu utilisateur"
+          :aria-expanded="isMenuOpen"
+          @click="isMenuOpen = !isMenuOpen"
         >
-          <LogOut class="size-4" aria-hidden="true" />
-          Se deconnecter
+          <span
+            class="flex size-8 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700"
+          >
+            {{
+              getInitials(`${authStore.user?.firstName ?? ''} ${authStore.user?.lastName ?? ''}`)
+            }}
+          </span>
+          <span class="hidden text-sm font-medium text-gray-700 sm:inline">
+            {{ authStore.user?.firstName }} {{ authStore.user?.lastName }}
+          </span>
+          <ChevronDown class="size-4 text-gray-400" aria-hidden="true" />
         </button>
+
+        <div
+          v-if="isMenuOpen"
+          class="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+        >
+          <button
+            type="button"
+            class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+            @click="onLogout"
+          >
+            <LogOut class="size-4" aria-hidden="true" />
+            Se deconnecter
+          </button>
+        </div>
       </div>
     </div>
   </header>

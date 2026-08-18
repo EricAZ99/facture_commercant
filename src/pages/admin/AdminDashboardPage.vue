@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import { AlertTriangle, Store, TrendingUp, UserPlus } from 'lucide-vue-next'
-import { onMounted } from 'vue'
+import { AlertTriangle, Store, TrendingUp, UserPlus, Users } from 'lucide-vue-next'
+import { computed, onMounted } from 'vue'
 
 import BaseButton from '@/components/base/BaseButton.vue'
+import RevenueChart from '@/components/dashboard/RevenueChart.vue'
 import StatCard from '@/components/dashboard/StatCard.vue'
+import RankedList from '@/components/reports/RankedList.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
 import { ROUTE_NAMES, SUBSCRIPTION_STATUS_LABELS } from '@/constants'
-import { useAdminBusinesses } from '@/composables'
+import { useAdminAnalytics, useAdminBusinesses } from '@/composables'
 import { formatCurrency } from '@/utils/formatters'
 
 const { store, loadStats } = useAdminBusinesses()
+const { mrrTrend, revenueByPlan, churn, ltv, load: loadAnalytics } = useAdminAnalytics()
 
-onMounted(() => loadStats())
+onMounted(() => {
+  void loadStats()
+  void loadAnalytics()
+})
+
+/** Reutilise `RevenueChart.vue` (attend `{date, amount}`) pour la tendance MRR (`{month, mrr}`). */
+const mrrChartData = computed(
+  () =>
+    mrrTrend.data.value?.map((point) => ({ date: `${point.month}-01`, amount: point.mrr })) ?? []
+)
+
+const revenueByPlanItems = computed(
+  () =>
+    revenueByPlan.data.value?.map((item) => ({
+      id: item.planId,
+      label: item.planName,
+      value: item.amount,
+      secondaryLabel: `${item.count} commerce(s)`
+    })) ?? []
+)
 </script>
 
 <template>
@@ -63,6 +85,37 @@ onMounted(() => loadStats())
             <dd class="text-lg font-semibold text-gray-900">{{ count }}</dd>
           </div>
         </dl>
+      </div>
+
+      <!-- Finance & analytics plateforme -->
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard
+          label="Taux de retention"
+          :value="churn.data.value ? `${churn.data.value.retentionRatePercent}%` : '—'"
+          :icon="Users"
+          tone="success"
+        />
+        <StatCard
+          label="Valeur vie client moyenne (LTV)"
+          :value="ltv.data.value ? formatCurrency(ltv.data.value.averageLtv) : '—'"
+          :icon="TrendingUp"
+        />
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 class="mb-4 text-sm font-semibold text-gray-900">
+            Tendance du revenu recurrent (MRR, 6 derniers mois)
+          </h2>
+          <LoadingState v-if="mrrTrend.isLoading.value" message="Chargement..." />
+          <RevenueChart v-else :data="mrrChartData" />
+        </div>
+
+        <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 class="mb-4 text-sm font-semibold text-gray-900">Revenu recurrent par plan</h2>
+          <LoadingState v-if="revenueByPlan.isLoading.value" message="Chargement..." />
+          <RankedList v-else :items="revenueByPlanItems" :format-value="(v) => formatCurrency(v)" />
+        </div>
       </div>
 
       <div>

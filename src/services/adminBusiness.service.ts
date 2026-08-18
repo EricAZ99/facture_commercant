@@ -6,7 +6,9 @@ import type {
   AdminBusinessSummary,
   AdminChangePlanPayload,
   ApiResponse,
+  ApplyDiscountPayload,
   ID,
+  ImpersonationTicket,
   ListQueryParams,
   PaginatedResponse,
   PlatformStats,
@@ -59,6 +61,39 @@ export const adminBusinessService = {
   ): Promise<PaginatedResponse<AdminAuditLogEntry>> {
     const { data } = await adminApiClient.get<PaginatedResponse<AdminAuditLogEntry>>(
       API_ENDPOINTS.admin.auditLog(businessId),
+      { params }
+    )
+    return data
+  },
+
+  /** Suppression definitive (au-dela de la suspension) : exige le nom exact du commerce en confirmation. */
+  async remove(id: ID, confirmName: string): Promise<void> {
+    await adminApiClient.delete(API_ENDPOINTS.admin.businessById(id), { data: { confirmName } })
+  },
+
+  /** Demande un ticket de mode "apercu" pour ce commerce (voir `authService.exchangeImpersonationTicket`). */
+  async impersonate(id: ID): Promise<ImpersonationTicket> {
+    const { data } = await adminApiClient.post<ApiResponse<ImpersonationTicket>>(
+      API_ENDPOINTS.admin.impersonateBusiness(id)
+    )
+    return data.data
+  },
+
+  /** Applique une remise administrative a l'abonnement d'un commerce (distinct du code promo self-service). */
+  async applyDiscount(id: ID, payload: ApplyDiscountPayload): Promise<AdminBusinessDetail> {
+    const { data } = await adminApiClient.post<ApiResponse<AdminBusinessDetail>>(
+      API_ENDPOINTS.admin.applyDiscount(id),
+      payload
+    )
+    return data.data
+  },
+
+  /** Journal d'audit global (toutes actions, tous commerces confondus). */
+  async getGlobalAuditLog(
+    params?: ListQueryParams
+  ): Promise<PaginatedResponse<AdminAuditLogEntry>> {
+    const { data } = await adminApiClient.get<PaginatedResponse<AdminAuditLogEntry>>(
+      API_ENDPOINTS.admin.globalAuditLog,
       { params }
     )
     return data

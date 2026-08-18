@@ -7,7 +7,8 @@ import type {
   ReportSummary,
   RevenueDataPoint,
   TopClientReportItem,
-  TopProductReportItem
+  TopProductReportItem,
+  VatReport
 } from '@/types'
 
 import { apiClient } from './api'
@@ -83,6 +84,23 @@ export const reportService = {
       API_ENDPOINTS.reports.topClients,
       { params: toQueryParams(filters), signal: filters?.signal }
     )
+    return data.data
+  },
+
+  /** Evolution du chiffre d'affaires sur la fenetre de meme duree, immediatement precedente. */
+  async getRevenueComparison(filters?: ReportRequestParams): Promise<RevenueDataPoint[]> {
+    const { data } = await apiClient.get<ApiResponse<RevenueDataPoint[]>>(
+      API_ENDPOINTS.reports.revenueComparison,
+      { params: toQueryParams(filters), signal: filters?.signal }
+    )
+    return data.data
+  },
+
+  async getVatBreakdown(filters?: ReportRequestParams): Promise<VatReport> {
+    const { data } = await apiClient.get<ApiResponse<VatReport>>(API_ENDPOINTS.reports.vat, {
+      params: toQueryParams(filters),
+      signal: filters?.signal
+    })
     return data.data
   }
 }

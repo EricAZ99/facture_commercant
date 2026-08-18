@@ -4,8 +4,8 @@ import { reactive, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
-import { BUSINESS_TYPE_OPTIONS, CURRENCY_OPTIONS } from '@/constants'
-import type { Business, BusinessType, UpdateBusinessPayload } from '@/types'
+import { BUSINESS_TYPE_OPTIONS, CURRENCY_OPTIONS, WEEKDAYS } from '@/constants'
+import type { Business, BusinessType, OpeningHours, UpdateBusinessPayload, Weekday } from '@/types'
 import { isPositiveNumber, isRequired, isValidEmail } from '@/utils/validators'
 
 interface Props {
@@ -30,6 +30,22 @@ const emit = defineEmits<{
  * `BaseInput`. La conversion en payload type se fait uniquement a
  * l'emission.
  */
+/** Etat local des horaires, en chaines editables pour un `<input type="time">`. */
+type OpeningHoursFormState = Record<Weekday, { open: string; close: string; closed: boolean }>
+
+function emptyOpeningHours(): OpeningHoursFormState {
+  const day = { open: '09:00', close: '18:00', closed: false }
+  return {
+    monday: { ...day },
+    tuesday: { ...day },
+    wednesday: { ...day },
+    thursday: { ...day },
+    friday: { ...day },
+    saturday: { ...day },
+    sunday: { ...day, closed: true }
+  }
+}
+
 interface BusinessFormState {
   name: string
   businessType: BusinessType
@@ -37,8 +53,15 @@ interface BusinessFormState {
   address: string
   city: string
   country: string
+  shippingAddress: string
+  shippingCity: string
+  shippingCountry: string
   phone: string
   email: string
+  website: string
+  facebook: string
+  instagram: string
+  whatsapp: string
   currency: string
   vatEnabled: boolean
   defaultVatRate: string
@@ -47,6 +70,8 @@ interface BusinessFormState {
   nextNumber: string
   defaultPaymentTermDays: string
   paymentTerms: string
+  termsAndConditions: string
+  openingHours: OpeningHoursFormState
 }
 
 function emptyForm(): BusinessFormState {
@@ -57,8 +82,15 @@ function emptyForm(): BusinessFormState {
     address: '',
     city: '',
     country: '',
+    shippingAddress: '',
+    shippingCity: '',
+    shippingCountry: '',
     phone: '',
     email: '',
+    website: '',
+    facebook: '',
+    instagram: '',
+    whatsapp: '',
     currency: 'XOF',
     vatEnabled: true,
     defaultVatRate: '0',
@@ -66,7 +98,9 @@ function emptyForm(): BusinessFormState {
     numberPadding: '4',
     nextNumber: '1',
     defaultPaymentTermDays: '30',
-    paymentTerms: ''
+    paymentTerms: '',
+    termsAndConditions: '',
+    openingHours: emptyOpeningHours()
   }
 }
 
@@ -80,6 +114,21 @@ watch(
       Object.assign(form, emptyForm())
       return
     }
+    const defaults = emptyOpeningHours()
+    const openingHours = { ...defaults }
+    if (business.openingHours) {
+      for (const day of Object.keys(defaults) as Weekday[]) {
+        const source = business.openingHours[day]
+        if (source) {
+          openingHours[day] = {
+            open: source.open ?? defaults[day].open,
+            close: source.close ?? defaults[day].close,
+            closed: source.closed
+          }
+        }
+      }
+    }
+
     Object.assign(form, {
       name: business.name,
       businessType: business.businessType,
@@ -87,8 +136,15 @@ watch(
       address: business.address ?? '',
       city: business.city ?? '',
       country: business.country ?? '',
+      shippingAddress: business.shippingAddress?.address ?? '',
+      shippingCity: business.shippingAddress?.city ?? '',
+      shippingCountry: business.shippingAddress?.country ?? '',
       phone: business.phone ?? '',
       email: business.email,
+      website: business.socialLinks?.website ?? '',
+      facebook: business.socialLinks?.facebook ?? '',
+      instagram: business.socialLinks?.instagram ?? '',
+      whatsapp: business.socialLinks?.whatsapp ?? '',
       currency: business.currency,
       vatEnabled: business.vatEnabled,
       defaultVatRate: String(business.defaultVatRate),
@@ -96,7 +152,9 @@ watch(
       numberPadding: String(business.invoiceSettings.numberPadding),
       nextNumber: String(business.invoiceSettings.nextNumber),
       defaultPaymentTermDays: String(business.invoiceSettings.defaultPaymentTermDays),
-      paymentTerms: business.invoiceSettings.paymentTerms ?? ''
+      paymentTerms: business.invoiceSettings.paymentTerms ?? '',
+      termsAndConditions: business.termsAndConditions ?? '',
+      openingHours
     })
   },
   { immediate: true }
@@ -147,8 +205,26 @@ function validate(): boolean {
   return Object.values(localErrors).every((message) => !message)
 }
 
+function toOpeningHoursPayload(): OpeningHours {
+  const result = {} as OpeningHours
+  for (const day of Object.keys(form.openingHours) as Weekday[]) {
+    const entry = form.openingHours[day]
+    result[day] = {
+      closed: entry.closed,
+      open: entry.closed ? undefined : entry.open || undefined,
+      close: entry.closed ? undefined : entry.close || undefined
+    }
+  }
+  return result
+}
+
 function onSubmit(): void {
   if (!validate()) return
+
+  const hasShippingAddress =
+    form.shippingAddress.trim() || form.shippingCity.trim() || form.shippingCountry.trim()
+  const hasSocialLinks =
+    form.website.trim() || form.facebook.trim() || form.instagram.trim() || form.whatsapp.trim()
 
   const payload: UpdateBusinessPayload = {
     name: form.name.trim(),
@@ -157,11 +233,28 @@ function onSubmit(): void {
     address: form.address.trim() || undefined,
     city: form.city.trim() || undefined,
     country: form.country.trim() || undefined,
+    shippingAddress: hasShippingAddress
+      ? {
+          address: form.shippingAddress.trim() || undefined,
+          city: form.shippingCity.trim() || undefined,
+          country: form.shippingCountry.trim() || undefined
+        }
+      : undefined,
     phone: form.phone.trim() || undefined,
     email: form.email.trim(),
+    socialLinks: hasSocialLinks
+      ? {
+          website: form.website.trim() || undefined,
+          facebook: form.facebook.trim() || undefined,
+          instagram: form.instagram.trim() || undefined,
+          whatsapp: form.whatsapp.trim() || undefined
+        }
+      : undefined,
     currency: form.currency,
     vatEnabled: form.vatEnabled,
     defaultVatRate: Number(form.defaultVatRate),
+    termsAndConditions: form.termsAndConditions.trim() || undefined,
+    openingHours: toOpeningHoursPayload(),
     invoiceSettings: {
       numberPrefix: form.numberPrefix.trim(),
       numberPadding: Number(form.numberPadding),
@@ -215,11 +308,73 @@ function onSubmit(): void {
 
     <!-- Adresse -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Adresse</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">Adresse de facturation</legend>
       <BaseInput v-model="form.address" label="Adresse" :error="fieldError('address')" />
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <BaseInput v-model="form.city" label="Ville" :error="fieldError('city')" />
         <BaseInput v-model="form.country" label="Pays" :error="fieldError('country')" />
+      </div>
+    </fieldset>
+
+    <!-- Adresse de livraison -->
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        Adresse de livraison
+        <span class="font-normal text-gray-400">(si differente de la facturation)</span>
+      </legend>
+      <BaseInput v-model="form.shippingAddress" label="Adresse" />
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <BaseInput v-model="form.shippingCity" label="Ville" />
+        <BaseInput v-model="form.shippingCountry" label="Pays" />
+      </div>
+    </fieldset>
+
+    <!-- Reseaux sociaux -->
+    <fieldset class="flex flex-col gap-4">
+      <legend class="mb-1 text-sm font-semibold text-gray-900">Site web & reseaux sociaux</legend>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <BaseInput v-model="form.website" type="url" label="Site web" placeholder="https://..." />
+        <BaseInput v-model="form.whatsapp" label="WhatsApp" placeholder="+225 07 00 00 00 00" />
+        <BaseInput v-model="form.facebook" type="url" label="Facebook" placeholder="https://..." />
+        <BaseInput
+          v-model="form.instagram"
+          type="url"
+          label="Instagram"
+          placeholder="https://..."
+        />
+      </div>
+    </fieldset>
+
+    <!-- Horaires d'ouverture -->
+    <fieldset class="flex flex-col gap-3">
+      <legend class="mb-1 text-sm font-semibold text-gray-900">Horaires d'ouverture</legend>
+      <div
+        v-for="day in WEEKDAYS"
+        :key="day.value"
+        class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4"
+      >
+        <span class="text-sm text-gray-700">{{ day.label }}</span>
+        <template v-if="!form.openingHours[day.value].closed">
+          <input
+            v-model="form.openingHours[day.value].open"
+            type="time"
+            class="focus-ring rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+          />
+          <input
+            v-model="form.openingHours[day.value].close"
+            type="time"
+            class="focus-ring rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+          />
+        </template>
+        <span v-else class="text-sm text-gray-400 sm:col-span-2">Ferme</span>
+        <label class="flex items-center gap-2 text-sm text-gray-600">
+          <input
+            v-model="form.openingHours[day.value].closed"
+            type="checkbox"
+            class="focus-ring size-4 rounded border-gray-300"
+          />
+          Ferme ce jour
+        </label>
       </div>
     </fieldset>
 
@@ -322,6 +477,13 @@ function onSubmit(): void {
           />
         </div>
       </div>
+
+      <BaseTextarea
+        v-model="form.termsAndConditions"
+        label="Conditions generales de vente"
+        :rows="4"
+        placeholder="Vos CGV, affichables sur vos documents..."
+      />
     </fieldset>
 
     <div class="flex justify-end">

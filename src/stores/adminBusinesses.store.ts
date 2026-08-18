@@ -10,6 +10,7 @@ import type {
   ApiError,
   AsyncStatus,
   ID,
+  ImpersonationTicket,
   PaginationMeta,
   PlatformStats,
   UpdateBusinessStatusPayload
@@ -71,6 +72,14 @@ export const useAdminBusinessesStore = defineStore('adminBusinesses', () => {
     return adminBusinessService.changePlan(id, payload)
   }
 
+  function removeBusiness(id: ID, confirmName: string): Promise<void> {
+    return adminBusinessService.remove(id, confirmName)
+  }
+
+  function impersonateBusiness(id: ID): Promise<ImpersonationTicket> {
+    return adminBusinessService.impersonate(id)
+  }
+
   return {
     items,
     meta,
@@ -83,6 +92,8 @@ export const useAdminBusinessesStore = defineStore('adminBusinesses', () => {
     fetchStats,
     getBusiness,
     updateBusinessStatus,
-    changeBusinessPlan
+    changeBusinessPlan,
+    removeBusiness,
+    impersonateBusiness
   }
 })

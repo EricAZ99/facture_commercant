@@ -52,3 +52,26 @@ export interface ChangePasswordPayload {
   currentPassword: string
   newPassword: string
 }
+
+/** Payload de changement d'email (utilisateur connecte), applique immediatement apres verification du mot de passe. */
+export interface ChangeEmailPayload {
+  newEmail: string
+  password: string
+}
+
+/** Entree de l'historique de connexion de l'utilisateur courant. */
+export interface UserLoginHistoryEntry {
+  id: string
+  userId: string
+  userAgent: string
+  ipAddress: string
+  createdAt: string
+}
+
+/** Export des donnees personnelles de l'utilisateur courant (droit a l'oubli / RGPD). */
+export interface UserDataExport {
+  exportedAt: string
+  user: User
+  business: { id: string; name: string }
+  loginHistory: UserLoginHistoryEntry[]
+}

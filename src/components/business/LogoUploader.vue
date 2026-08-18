@@ -8,12 +8,15 @@ interface Props {
   logoUrl?: string
   businessName?: string
   uploading?: boolean
+  /** Nom de l'image geree (utilise dans les libelles/textes alternatifs) : "logo" ou "tampon". */
+  itemLabel?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   logoUrl: undefined,
   businessName: '',
-  uploading: false
+  uploading: false,
+  itemLabel: 'logo'
 })
 
 const emit = defineEmits<{
@@ -56,7 +59,7 @@ function onFileSelected(event: Event): void {
       <img
         v-if="props.logoUrl"
         :src="props.logoUrl"
-        :alt="`Logo de ${props.businessName || 'votre commerce'}`"
+        :alt="`${itemLabel === 'logo' ? 'Logo' : 'Tampon'} de ${props.businessName || 'votre commerce'}`"
         class="size-full object-contain"
       />
       <span v-else class="text-lg font-semibold text-gray-400">
@@ -79,7 +82,7 @@ function onFileSelected(event: Event): void {
         @click.prevent="openPicker"
       >
         <ImageUp class="size-4" aria-hidden="true" />
-        {{ props.logoUrl ? 'Changer le logo' : 'Ajouter un logo' }}
+        {{ props.logoUrl ? `Changer le ${itemLabel}` : `Ajouter un ${itemLabel}` }}
       </label>
       <input
         :id="inputId"

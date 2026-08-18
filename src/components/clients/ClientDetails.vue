@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { Mail, MapPin, Phone, Receipt } from 'lucide-vue-next'
 
+import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import type { Client } from '@/types'
-import { formatDate, getInitials } from '@/utils/formatters'
+import { formatCurrency, formatDate, getInitials } from '@/utils/formatters'
 
 interface Props {
   client: Client
+  currency?: string
 }
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  currency: 'XOF'
+})
 
 const emit = defineEmits<{
   edit: []
@@ -25,17 +29,32 @@ const emit = defineEmits<{
       <BaseButton variant="danger" size="sm" @click="emit('delete')">Supprimer</BaseButton>
     </template>
 
-    <div class="flex items-center gap-4">
-      <span
-        class="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700"
-      >
-        {{ getInitials(`${client.firstName} ${client.lastName}`) }}
-      </span>
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900">
-          {{ client.firstName }} {{ client.lastName }}
-        </h2>
-        <p class="text-sm text-gray-500">Client depuis le {{ formatDate(client.createdAt) }}</p>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <span
+          class="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary-100 text-lg font-semibold text-primary-700"
+        >
+          {{ getInitials(`${client.firstName} ${client.lastName}`) }}
+        </span>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900">
+            {{ client.firstName }} {{ client.lastName }}
+          </h2>
+          <p class="text-sm text-gray-500">Client depuis le {{ formatDate(client.createdAt) }}</p>
+          <div v-if="client.tags?.length" class="mt-1.5 flex flex-wrap gap-1">
+            <BaseBadge v-for="tag in client.tags" :key="tag" variant="info">{{ tag }}</BaseBadge>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="client.outstandingBalance !== undefined" class="text-right">
+        <p class="text-xs text-gray-500">Solde du</p>
+        <p
+          class="text-lg font-semibold"
+          :class="client.outstandingBalance > 0 ? 'text-red-600' : 'text-gray-900'"
+        >
+          {{ formatCurrency(client.outstandingBalance, currency) }}
+        </p>
       </div>
     </div>
 
@@ -71,5 +90,10 @@ const emit = defineEmits<{
         </div>
       </div>
     </dl>
+
+    <div v-if="client.notes" class="mt-4 border-t border-gray-100 pt-4">
+      <p class="text-xs text-gray-500">Notes</p>
+      <p class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ client.notes }}</p>
+    </div>
   </BaseCard>
 </template>

@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '@/constants'
-import type { ApiResponse, Business, UpdateBusinessPayload } from '@/types'
+import type { ApiResponse, Business, BusinessDataExport, UpdateBusinessPayload } from '@/types'
 
 import { apiClient } from './api'
 
@@ -30,5 +30,35 @@ export const businessService = {
       }
     )
     return data.data
+  },
+
+  async uploadStamp(file: File): Promise<Business> {
+    const formData = new FormData()
+    formData.append('stamp', file)
+
+    const { data } = await apiClient.post<ApiResponse<Business>>(
+      API_ENDPOINTS.business.stamp,
+      formData,
+      { headers: { 'Content-Type': undefined } }
+    )
+    return data.data
+  },
+
+  async regenerateApiKey(): Promise<Business> {
+    const { data } = await apiClient.post<ApiResponse<Business>>(
+      API_ENDPOINTS.business.regenerateApiKey
+    )
+    return data.data
+  },
+
+  async exportData(): Promise<BusinessDataExport> {
+    const { data } = await apiClient.get<ApiResponse<BusinessDataExport>>(
+      API_ENDPOINTS.business.export
+    )
+    return data.data
+  },
+
+  async deleteAccount(confirmName: string): Promise<void> {
+    await apiClient.delete(API_ENDPOINTS.business.base, { data: { confirmName } })
   }
 }

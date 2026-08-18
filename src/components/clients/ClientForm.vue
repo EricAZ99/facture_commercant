@@ -3,6 +3,7 @@ import { reactive, watch } from 'vue'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
+import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import type { Client, CreateClientPayload } from '@/types'
 import { isRequired, isValidEmail } from '@/utils/validators'
 
@@ -39,6 +40,9 @@ interface ClientFormState {
   city: string
   country: string
   taxId: string
+  notes: string
+  /** Etiquettes saisies sous forme de texte separe par des virgules, converties en tableau a l'emission. */
+  tags: string
 }
 
 function emptyForm(): ClientFormState {
@@ -50,7 +54,9 @@ function emptyForm(): ClientFormState {
     address: '',
     city: '',
     country: '',
-    taxId: ''
+    taxId: '',
+    notes: '',
+    tags: ''
   }
 }
 
@@ -71,7 +77,9 @@ watch(
             address: client.address ?? '',
             city: client.city ?? '',
             country: client.country ?? '',
-            taxId: client.taxId ?? ''
+            taxId: client.taxId ?? '',
+            notes: client.notes ?? '',
+            tags: (client.tags ?? []).join(', ')
           }
         : emptyForm()
     )
@@ -97,6 +105,11 @@ function onSubmit(): void {
   if (!validate()) return
 
   // On n'envoie pas de chaines vides pour les champs optionnels.
+  const tags = form.tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+
   const payload: CreateClientPayload = {
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
@@ -105,7 +118,9 @@ function onSubmit(): void {
     address: form.address.trim() || undefined,
     city: form.city.trim() || undefined,
     country: form.country.trim() || undefined,
-    taxId: form.taxId.trim() || undefined
+    taxId: form.taxId.trim() || undefined,
+    notes: form.notes.trim() || undefined,
+    tags: tags.length > 0 ? tags : undefined
   }
   emit('submit', payload)
 }
@@ -151,6 +166,21 @@ function onSubmit(): void {
       label="Identifiant fiscal"
       hint="Optionnel."
       :error="fieldError('taxId')"
+    />
+
+    <BaseInput
+      v-model="form.tags"
+      label="Etiquettes"
+      placeholder="VIP, Grossiste..."
+      hint="Separees par des virgules. Utilisees pour segmenter/rechercher vos clients."
+      :error="fieldError('tags')"
+    />
+
+    <BaseTextarea
+      v-model="form.notes"
+      label="Notes"
+      hint="Note interne, jamais visible du client."
+      :rows="2"
     />
 
     <div class="mt-2 flex justify-end gap-2">

@@ -17,17 +17,31 @@ const { store, isSubmitting, load, submitCreate, submitUpdate } = useAdminPlans(
 onMounted(() => load())
 
 const isFormOpen = ref(false)
+/** Plan en cours de modification : determine si la soumission cree ou met a jour. */
 const editingPlan = ref<SubscriptionPlan | null>(null)
+/** Valeurs pre-remplies dans le formulaire (edition OU duplication) — distinct de `editingPlan`
+ * pour que dupliquer un plan cree bien un NOUVEAU plan plutot que d'ecraser la source. */
+const formSeed = ref<SubscriptionPlan | null>(null)
 const formServerErrors = ref<Record<string, string[]> | null>(null)
 
 function openCreateForm(): void {
   editingPlan.value = null
+  formSeed.value = null
   formServerErrors.value = null
   isFormOpen.value = true
 }
 
 function openEditForm(plan: SubscriptionPlan): void {
   editingPlan.value = plan
+  formSeed.value = plan
+  formServerErrors.value = null
+  isFormOpen.value = true
+}
+
+/** Pre-remplit le formulaire de creation avec les valeurs d'un plan existant, comme point de depart. */
+function duplicatePlan(plan: SubscriptionPlan): void {
+  editingPlan.value = null
+  formSeed.value = { ...plan, name: `${plan.name} (copie)` }
   formServerErrors.value = null
   isFormOpen.value = true
 }
@@ -35,6 +49,7 @@ function openEditForm(plan: SubscriptionPlan): void {
 function closeForm(): void {
   isFormOpen.value = false
   editingPlan.value = null
+  formSeed.value = null
   formServerErrors.value = null
 }
 
@@ -87,9 +102,14 @@ function limitLabel(value: number | null, unit: string): string {
             <li>{{ limitLabel(plan.limits.maxClients, 'clients') }}</li>
             <li>{{ limitLabel(plan.limits.maxUsers, 'utilisateurs') }}</li>
           </ul>
-          <BaseButton variant="outline" size="sm" class="mt-auto" @click="openEditForm(plan)">
-            Modifier
-          </BaseButton>
+          <div class="mt-auto flex gap-2">
+            <BaseButton variant="outline" size="sm" class="flex-1" @click="openEditForm(plan)">
+              Modifier
+            </BaseButton>
+            <BaseButton variant="outline" size="sm" @click="duplicatePlan(plan)">
+              Dupliquer
+            </BaseButton>
+          </div>
         </div>
       </BaseCard>
     </div>
@@ -100,7 +120,7 @@ function limitLabel(value: number | null, unit: string): string {
       @close="closeForm"
     >
       <PlanEditForm
-        :plan="editingPlan"
+        :plan="formSeed"
         :submitting="isSubmitting"
         :server-errors="formServerErrors"
         @submit="onFormSubmit"

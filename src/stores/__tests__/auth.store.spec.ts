@@ -50,7 +50,19 @@ function fakeAuthResponse(overrides: Partial<AuthResponse> = {}): AuthResponse {
         numberPadding: 4,
         defaultPaymentTermDays: 30
       },
+      quoteSettings: {
+        numberPrefix: 'DE-',
+        nextNumber: 1,
+        numberPadding: 4
+      },
+      creditNoteSettings: {
+        numberPrefix: 'AV-',
+        nextNumber: 1,
+        numberPadding: 4
+      },
       isSuspended: false,
+      referralCode: 'REF12345',
+      referralRedemptions: 0,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
     },

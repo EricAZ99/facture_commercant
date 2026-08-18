@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ArrowLeft } from 'lucide-vue-next'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import BaseModal from '@/components/base/BaseModal.vue'
@@ -13,6 +13,7 @@ import LoadingState from '@/components/states/LoadingState.vue'
 import { useApi, useClients } from '@/composables'
 import { ROUTE_NAMES } from '@/constants'
 import { clientService } from '@/services'
+import { useAuthStore } from '@/stores'
 import type { ApiError, CreateClientPayload } from '@/types'
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
 const props = defineProps<Props>()
 
 const router = useRouter()
+const authStore = useAuthStore()
+const currency = computed(() => authStore.business?.currency ?? 'XOF')
 const { isSubmitting, isDeleting, submitUpdate, removeClient } = useClients()
 
 const { data: client, isLoading, isError, error, execute } = useApi(clientService.getById)
@@ -82,6 +85,7 @@ async function confirmDelete(): Promise<void> {
     <ClientDetails
       v-else-if="client"
       :client="client"
+      :currency="currency"
       @edit="openEditForm"
       @delete="isDeleteDialogOpen = true"
     />

@@ -1,7 +1,9 @@
 import { computed, ref } from 'vue'
 
+import { subscriptionService } from '@/services'
 import { useSubscriptionStore } from '@/stores'
-import type { ApiError, ID } from '@/types'
+import type { ApiError, ID, SubscriptionInvoice } from '@/types'
+import { downloadBlob } from '@/utils/download'
 import { computeLimitUsages, type LimitUsage } from '@/utils/subscriptionUsage'
 
 import { useToast } from './useToast'
@@ -20,17 +22,45 @@ export function useSubscription() {
   const isChangingPlan = ref(false)
   const isCancelling = ref(false)
 
+  const invoices = ref<SubscriptionInvoice[]>([])
+  const isLoadingInvoices = ref(false)
+  const downloadingReceiptId = ref<ID | null>(null)
+
   async function load(): Promise<void> {
-    await Promise.all([store.fetchCurrent(), store.fetchPlans()])
+    await Promise.all([store.fetchCurrent(), store.fetchPlans(), loadInvoices()])
   }
 
-  async function selectPlan(planId: ID): Promise<boolean> {
+  async function loadInvoices(): Promise<void> {
+    isLoadingInvoices.value = true
+    try {
+      invoices.value = await subscriptionService.listInvoices()
+    } catch {
+      invoices.value = []
+    } finally {
+      isLoadingInvoices.value = false
+    }
+  }
+
+  async function downloadReceipt(invoice: SubscriptionInvoice): Promise<void> {
+    downloadingReceiptId.value = invoice.id
+    try {
+      const blob = await subscriptionService.downloadReceipt(invoice.id)
+      downloadBlob(blob, `recu-${invoice.issuedAt.slice(0, 10)}.pdf`)
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      downloadingReceiptId.value = null
+    }
+  }
+
+  async function selectPlan(planId: ID, promoCode?: string): Promise<boolean> {
     if (store.current?.plan.id === planId) return false
 
     isChangingPlan.value = true
     try {
-      await store.changePlan(planId)
+      await store.changePlan(planId, promoCode)
       toast.success('Votre plan a ete mis a jour avec succes.')
+      await loadInvoices()
       return true
     } catch (err) {
       toast.error((err as ApiError).message)
@@ -67,9 +97,13 @@ export function useSubscription() {
     store,
     isChangingPlan,
     isCancelling,
+    invoices,
+    isLoadingInvoices,
+    downloadingReceiptId,
     load,
     selectPlan,
     cancelSubscription,
+    downloadReceipt,
     limitUsages,
     limitAlerts
   }

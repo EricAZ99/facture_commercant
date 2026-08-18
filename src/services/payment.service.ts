@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/constants'
 import type {
   ApiResponse,
   CreatePaymentPayload,
+  CreateRefundPayload,
   ID,
   ListQueryParams,
   PaginatedResponse,
@@ -41,5 +42,14 @@ export const paymentService = {
 
   async remove(id: ID): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.payments.byId(id))
+  },
+
+  /** Rembourse (totalement ou partiellement) un paiement ; retourne le paiement mis a jour. */
+  async refund(id: ID, payload: CreateRefundPayload): Promise<Payment> {
+    const { data } = await apiClient.post<ApiResponse<Payment>>(
+      API_ENDPOINTS.payments.refund(id),
+      payload
+    )
+    return data.data
   }
 }

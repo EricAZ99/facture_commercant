@@ -11,6 +11,8 @@ export interface User {
   phone?: string
   role: UserRole
   permissions: Permission[]
+  /** Departement/equipe interne (texte libre, ex: "Ventes", "Comptabilite"). */
+  department?: string
   avatarUrl?: string
   isActive: boolean
   lastLoginAt?: ISODateString
@@ -25,7 +27,15 @@ export interface CreateUserPayload {
   email: string
   phone?: string
   role: UserRole
+  department?: string
 }
 
-/** Payload de mise a jour partielle d'un utilisateur. */
-export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'email'> & { isActive: boolean }>
+/**
+ * Payload de mise a jour partielle d'un utilisateur. `permissions` permet
+ * d'affiner la matrice de permissions d'un utilisateur au-dela du jeu par
+ * defaut de son role (voir `UserPermissionsDialog.vue`) ; independant du
+ * champ `role` qui reste la source des permissions par defaut.
+ */
+export type UpdateUserPayload = Partial<
+  Omit<CreateUserPayload, 'email'> & { isActive: boolean; permissions: Permission[] }
+>

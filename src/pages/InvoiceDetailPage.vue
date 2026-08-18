@@ -2,10 +2,12 @@
 import {
   ArrowLeft,
   Ban,
+  CalendarClock,
   CheckCircle2,
   Copy,
   Download,
   ExternalLink,
+  FileMinus,
   Mail,
   MessageCircle,
   MoreHorizontal,
@@ -24,16 +26,28 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
+import CreditNoteForm from '@/components/creditNotes/CreditNoteForm.vue'
+import CreditNoteList from '@/components/creditNotes/CreditNoteList.vue'
 import DropdownMenu from '@/components/base/DropdownMenu.vue'
 import InvoiceForm from '@/components/invoices/InvoiceForm.vue'
 import InvoiceSummary from '@/components/invoices/InvoiceSummary.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import InstallmentPayForm from '@/components/payments/InstallmentPayForm.vue'
+import InstallmentPlanCard from '@/components/payments/InstallmentPlanCard.vue'
+import InstallmentPlanCreateForm from '@/components/payments/InstallmentPlanCreateForm.vue'
 import PaymentForm from '@/components/payments/PaymentForm.vue'
 import PaymentHistory from '@/components/payments/PaymentHistory.vue'
+import RefundForm from '@/components/payments/RefundForm.vue'
 import EmptyState from '@/components/states/EmptyState.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
-import { useApi, useInvoiceActions, usePayments } from '@/composables'
+import {
+  useApi,
+  useInstallmentPlan,
+  useInvoiceActions,
+  useInvoiceCreditNotes,
+  usePayments
+} from '@/composables'
 import {
   canCancelInvoice,
   canEditInvoice,
@@ -45,7 +59,17 @@ import {
 } from '@/constants'
 import { clientService, invoiceService } from '@/services'
 import { useAuthStore } from '@/stores'
-import type { Client, CreatePaymentPayload, Invoice } from '@/types'
+import type {
+  Client,
+  CreateCreditNotePayload,
+  CreateInstallmentPlanPayload,
+  CreatePaymentPayload,
+  CreateRefundPayload,
+  Invoice,
+  PayInstallmentPayload,
+  Payment,
+  PaymentInstallment
+} from '@/types'
 import { formatCurrency, formatDate } from '@/utils/formatters'
 import type { InvoiceTotals } from '@/utils/invoiceCalculations'
 import { getInvoiceBalance, getInvoicePaymentStatus } from '@/utils/paymentStatus'
@@ -71,9 +95,33 @@ const {
   error: paymentsError,
   isSubmitting: isSubmittingPayment,
   submitError: paymentSubmitError,
+  isRefunding,
+  refundError,
   load: loadPayments,
-  registerPayment
+  registerPayment,
+  refundPayment
 } = usePayments(props.id)
+
+const {
+  plan: installmentPlan,
+  isLoading: isLoadingInstallmentPlan,
+  isCreating: isCreatingInstallmentPlan,
+  createError: installmentPlanCreateError,
+  payingInstallmentId,
+  load: loadInstallmentPlan,
+  createPlan: createInstallmentPlan,
+  payInstallment
+} = useInstallmentPlan(props.id)
+
+const {
+  creditNotes,
+  isLoading: isLoadingCreditNotes,
+  error: creditNotesError,
+  isCreating: isCreatingCreditNote,
+  submitError: creditNoteSubmitError,
+  load: loadCreditNotes,
+  issueCreditNote
+} = useInvoiceCreditNotes(props.id)
 
 const {
   isCancelling,
@@ -107,7 +155,7 @@ const isProcessingDocumentAction = computed(
 )
 
 async function load(): Promise<void> {
-  await Promise.all([execute(props.id), loadPayments()])
+  await Promise.all([execute(props.id), loadPayments(), loadCreditNotes(), loadInstallmentPlan()])
 }
 
 // --- Edition inline (brouillons uniquement) --------------------------
@@ -180,6 +228,100 @@ async function onPaymentSubmit(payload: Omit<CreatePaymentPayload, 'invoiceId'>)
   // Le paiement met a jour le solde/statut de la facture cote backend : on
   // rafraichit la facture pour refleter la nouvelle valeur.
   await execute(props.id)
+}
+
+// --- Remboursements ---------------------------------------------------
+
+const refundingPayment = ref<Payment | null>(null)
+const refundServerErrors = ref<Record<string, string[]> | null>(null)
+
+function openRefundForm(payment: Payment): void {
+  refundServerErrors.value = null
+  refundingPayment.value = payment
+}
+
+async function onRefundSubmit(payload: CreateRefundPayload): Promise<void> {
+  if (!refundingPayment.value) return
+  refundServerErrors.value = null
+  const updated = await refundPayment(refundingPayment.value, payload)
+  if (!updated) {
+    refundServerErrors.value = refundError.value?.details ?? null
+    return
+  }
+  refundingPayment.value = null
+  // Le remboursement diminue le montant paye/le statut de la facture cote
+  // backend : on rafraichit la facture pour refleter la nouvelle valeur.
+  await execute(props.id)
+}
+
+// --- Echeancier de paiement ---------------------------------------------
+
+/** Un echeancier ne peut etre cree que pour une facture envoyee, avec un solde restant. */
+const canCreateInstallmentPlan = computed(
+  () =>
+    invoice.value !== null &&
+    !['draft', 'cancelled'].includes(invoice.value.status) &&
+    balance.value > 0 &&
+    installmentPlan.value === null
+)
+
+const isInstallmentPlanFormOpen = ref(false)
+const installmentPlanServerErrors = ref<Record<string, string[]> | null>(null)
+
+function openInstallmentPlanForm(): void {
+  installmentPlanServerErrors.value = null
+  isInstallmentPlanFormOpen.value = true
+}
+
+async function onInstallmentPlanSubmit(payload: CreateInstallmentPlanPayload): Promise<void> {
+  installmentPlanServerErrors.value = null
+  const success = await createInstallmentPlan(payload)
+  if (!success) {
+    installmentPlanServerErrors.value = installmentPlanCreateError.value?.details ?? null
+    return
+  }
+  isInstallmentPlanFormOpen.value = false
+}
+
+const payingInstallment = ref<PaymentInstallment | null>(null)
+
+function openInstallmentPayForm(installment: PaymentInstallment): void {
+  payingInstallment.value = installment
+}
+
+async function onInstallmentPaySubmit(payload: PayInstallmentPayload): Promise<void> {
+  if (!payingInstallment.value) return
+  const success = await payInstallment(payingInstallment.value.id, payload)
+  if (!success) return
+  payingInstallment.value = null
+  // L'encaissement d'une echeance cree un vrai paiement et met a jour le
+  // solde/statut de la facture cote backend : on rafraichit tout.
+  await Promise.all([execute(props.id), loadPayments()])
+}
+
+// --- Avoirs -----------------------------------------------------------
+
+/** Une facture brouillon ou annulee ne peut pas donner lieu a un avoir. */
+const canIssueCreditNote = computed(
+  () => invoice.value !== null && !['draft', 'cancelled'].includes(invoice.value.status)
+)
+
+const isCreditNoteFormOpen = ref(false)
+const creditNoteServerErrors = ref<Record<string, string[]> | null>(null)
+
+function openCreditNoteForm(): void {
+  creditNoteServerErrors.value = null
+  isCreditNoteFormOpen.value = true
+}
+
+async function onCreditNoteSubmit(payload: CreateCreditNotePayload): Promise<void> {
+  creditNoteServerErrors.value = null
+  const creditNote = await issueCreditNote(payload)
+  if (!creditNote) {
+    creditNoteServerErrors.value = creditNoteSubmitError.value?.details ?? null
+    return
+  }
+  isCreditNoteFormOpen.value = false
 }
 
 // --- Actions facture ------------------------------------------------------
@@ -477,7 +619,76 @@ async function confirmCancel(): Promise<void> {
           title="Aucun paiement"
           message="Aucun paiement n'a encore ete enregistre pour cette facture."
         />
-        <PaymentHistory v-else :payments="payments" :currency="currency" />
+        <PaymentHistory
+          v-else
+          :payments="payments"
+          :currency="currency"
+          allow-refund
+          @refund="openRefundForm"
+        />
+      </BaseCard>
+
+      <BaseCard title="Echeancier de paiement">
+        <template v-if="canCreateInstallmentPlan" #actions>
+          <BaseButton
+            size="sm"
+            variant="outline"
+            class="print:hidden"
+            @click="openInstallmentPlanForm"
+          >
+            <CalendarClock class="size-4" aria-hidden="true" />
+            Creer un echeancier
+          </BaseButton>
+        </template>
+
+        <LoadingState
+          v-if="isLoadingInstallmentPlan && !installmentPlan"
+          message="Chargement de l'echeancier..."
+        />
+        <EmptyState
+          v-else-if="!installmentPlan"
+          :icon="CalendarClock"
+          title="Aucun echeancier"
+          message="Repartissez le solde restant de cette facture en plusieurs echeances."
+        />
+        <InstallmentPlanCard
+          v-else
+          :plan="installmentPlan"
+          :currency="currency"
+          :paying-installment-id="payingInstallmentId"
+          @pay="openInstallmentPayForm"
+        />
+      </BaseCard>
+
+      <BaseCard title="Avoirs">
+        <template v-if="canIssueCreditNote" #actions>
+          <BaseButton size="sm" variant="outline" class="print:hidden" @click="openCreditNoteForm">
+            <FileMinus class="size-4" aria-hidden="true" />
+            Emettre un avoir
+          </BaseButton>
+        </template>
+
+        <LoadingState
+          v-if="isLoadingCreditNotes && creditNotes.length === 0"
+          message="Chargement des avoirs..."
+        />
+        <ErrorState
+          v-else-if="creditNotesError && creditNotes.length === 0"
+          :message="creditNotesError.message"
+          @retry="loadCreditNotes"
+        />
+        <EmptyState
+          v-else-if="creditNotes.length === 0"
+          :icon="FileMinus"
+          title="Aucun avoir"
+          message="Aucun avoir n'a encore ete emis pour cette facture."
+        />
+        <CreditNoteList
+          v-else
+          :credit-notes="creditNotes"
+          :currency="currency"
+          hide-invoice-column
+        />
       </BaseCard>
     </div>
 
@@ -494,6 +705,69 @@ async function confirmCancel(): Promise<void> {
         :currency="currency"
         @submit="onPaymentSubmit"
         @cancel="isPaymentFormOpen = false"
+      />
+    </BaseModal>
+
+    <BaseModal
+      :open="refundingPayment !== null"
+      title="Rembourser le paiement"
+      @close="refundingPayment = null"
+    >
+      <RefundForm
+        v-if="refundingPayment"
+        :payment="refundingPayment"
+        :submitting="isRefunding"
+        :server-errors="refundServerErrors"
+        :currency="currency"
+        @submit="onRefundSubmit"
+        @cancel="refundingPayment = null"
+      />
+    </BaseModal>
+
+    <BaseModal
+      :open="isInstallmentPlanFormOpen"
+      title="Creer un echeancier de paiement"
+      @close="isInstallmentPlanFormOpen = false"
+    >
+      <InstallmentPlanCreateForm
+        v-if="invoice"
+        :remaining-balance="balance"
+        :submitting="isCreatingInstallmentPlan"
+        :server-errors="installmentPlanServerErrors"
+        :currency="currency"
+        @submit="onInstallmentPlanSubmit"
+        @cancel="isInstallmentPlanFormOpen = false"
+      />
+    </BaseModal>
+
+    <BaseModal
+      :open="payingInstallment !== null"
+      title="Encaisser l'echeance"
+      @close="payingInstallment = null"
+    >
+      <InstallmentPayForm
+        v-if="payingInstallment"
+        :installment="payingInstallment"
+        :submitting="payingInstallmentId === payingInstallment.id"
+        :currency="currency"
+        @submit="onInstallmentPaySubmit"
+        @cancel="payingInstallment = null"
+      />
+    </BaseModal>
+
+    <BaseModal
+      :open="isCreditNoteFormOpen"
+      title="Emettre un avoir"
+      @close="isCreditNoteFormOpen = false"
+    >
+      <CreditNoteForm
+        v-if="invoice"
+        :invoice="invoice"
+        :submitting="isCreatingCreditNote"
+        :server-errors="creditNoteServerErrors"
+        :currency="currency"
+        @submit="onCreditNoteSubmit"
+        @cancel="isCreditNoteFormOpen = false"
       />
     </BaseModal>
 

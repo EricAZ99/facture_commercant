@@ -2,6 +2,7 @@ import { API_ENDPOINTS } from '@/constants'
 import type {
   ActivityItem,
   ApiResponse,
+  DashboardAlerts,
   DashboardPeriod,
   DashboardStats,
   InvoiceStatusBreakdown,
@@ -66,6 +67,14 @@ export const dashboardService = {
         params: { limit: params?.limit },
         signal: params?.signal
       }
+    )
+    return data.data
+  },
+
+  async getAlerts(params?: { signal?: AbortSignal }): Promise<DashboardAlerts> {
+    const { data } = await apiClient.get<ApiResponse<DashboardAlerts>>(
+      API_ENDPOINTS.dashboard.alerts,
+      { signal: params?.signal }
     )
     return data.data
   }

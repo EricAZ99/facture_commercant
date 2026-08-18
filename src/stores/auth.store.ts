@@ -64,6 +64,11 @@ export const useAuthStore = defineStore('auth', () => {
     business.value = updated
   }
 
+  /** Remplace l'utilisateur courant suite a une modification de son profil (avatar, email...). */
+  function setUser(updated: User): void {
+    user.value = updated
+  }
+
   function clearSession(): void {
     user.value = null
     business.value = null
@@ -86,6 +91,17 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = true
     try {
       const response = await authService.register(payload)
+      setSession(response)
+    } finally {
+      loading.value = false
+    }
+  }
+
+  /** Echange un ticket de mode "apercu" (emis par l'espace admin) contre une vraie session commercant. */
+  async function loginWithImpersonationTicket(ticket: string): Promise<void> {
+    loading.value = true
+    try {
+      const response = await authService.exchangeImpersonationTicket(ticket)
       setSession(response)
     } finally {
       loading.value = false
@@ -158,11 +174,13 @@ export const useAuthStore = defineStore('auth', () => {
     hasAnyPermission,
     login,
     register,
+    loginWithImpersonationTicket,
     logout,
     forgotPassword,
     resetPassword,
     fetchCurrentUser,
     setBusiness,
+    setUser,
     clearSession
   }
 })

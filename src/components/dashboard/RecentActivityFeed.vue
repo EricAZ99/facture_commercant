@@ -1,5 +1,19 @@
 <script setup lang="ts">
-import { FilePlus, PackagePlus, Send, UserPlus, Wallet, type LucideIcon } from 'lucide-vue-next'
+import {
+  ArrowRightLeft,
+  CalendarClock,
+  ClipboardList,
+  CreditCard,
+  FileMinus,
+  FilePlus,
+  PackagePlus,
+  Send,
+  Undo2,
+  UserPlus,
+  Wallet,
+  XCircle,
+  type LucideIcon
+} from 'lucide-vue-next'
 
 import type { ActivityItem, ActivityType } from '@/types'
 import { formatRelativeTime } from '@/utils/formatters'
@@ -14,8 +28,17 @@ const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   invoice_created: FilePlus,
   invoice_sent: Send,
   payment_received: Wallet,
+  payment_refunded: Undo2,
   client_created: UserPlus,
-  product_created: PackagePlus
+  product_created: PackagePlus,
+  quote_created: ClipboardList,
+  quote_sent: Send,
+  quote_converted: ArrowRightLeft,
+  credit_note_created: FileMinus,
+  installment_plan_created: CalendarClock,
+  user_invited: UserPlus,
+  subscription_changed: CreditCard,
+  subscription_canceled: XCircle
 }
 </script>
 

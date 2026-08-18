@@ -59,11 +59,27 @@ export interface Subscription {
   currentPeriodEnd: ISODateString
   cancelAtPeriodEnd: boolean
   usage: SubscriptionUsage
+  /** Code promo/parrainage applique au dernier changement de plan, le cas echeant. */
+  promoCode?: string
+  /** Remise (%) resultant du code applique. */
+  discountPercent?: number
   createdAt: ISODateString
   updatedAt: ISODateString
 }
 
-/** Payload de changement de plan : une simple reference au plan choisi. */
+/** Payload de changement de plan. `promoCode` accepte un code promo ou un code de parrainage. */
 export interface ChangePlanPayload {
   planId: ID
+  promoCode?: string
+}
+
+/** Recu/facture d'un cycle de facturation SaaS passe (historique de facturation, distinct des factures emises par le commerce a SES clients). */
+export interface SubscriptionInvoice {
+  id: ID
+  businessId: ID
+  planName: string
+  amount: number
+  currency: string
+  billingCycle: BillingCycle
+  issuedAt: ISODateString
 }

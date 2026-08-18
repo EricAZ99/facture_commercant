@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Plus, Search, Users } from 'lucide-vue-next'
+import { Download, GitMerge, Plus, Search, Upload, Users } from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -8,7 +8,9 @@ import BaseCard from '@/components/base/BaseCard.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import ClientForm from '@/components/clients/ClientForm.vue'
+import ClientImportDialog from '@/components/clients/ClientImportDialog.vue'
 import ClientList from '@/components/clients/ClientList.vue'
+import MergeClientsDialog from '@/components/clients/MergeClientsDialog.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/states/EmptyState.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
@@ -25,15 +27,41 @@ const {
   pagination,
   isSubmitting,
   isDeleting,
+  isExporting,
+  isImporting,
+  isMerging,
   load,
   nextPage,
   prevPage,
   submitCreate,
   submitUpdate,
-  removeClient
+  removeClient,
+  exportClients,
+  importClientsFromCsv,
+  mergeClients
 } = useClients()
 
 onMounted(() => load())
+
+// --- Import / export / fusion --------------------------------------------
+
+const isImportDialogOpen = ref(false)
+const importDialogRef = ref<InstanceType<typeof ClientImportDialog> | null>(null)
+
+async function onImport(fileText: string): Promise<void> {
+  const result = await importClientsFromCsv(fileText)
+  if (result && result.createdCount > 0 && result.errors.length === 0) {
+    isImportDialogOpen.value = false
+  }
+  importDialogRef.value?.reset()
+}
+
+const isMergeDialogOpen = ref(false)
+
+async function onMerge(primary: Client, duplicate: Client): Promise<void> {
+  const success = await mergeClients(primary, duplicate)
+  if (success) isMergeDialogOpen.value = false
+}
 
 // --- Creation / modification ---------------------------------------------
 
@@ -101,6 +129,22 @@ function viewClient(client: Client): void {
   <div>
     <PageHeader title="Clients" subtitle="Gerez les clients de votre commerce.">
       <template #actions>
+        <BaseButton variant="outline" :loading="isExporting" @click="exportClients">
+          <Download v-if="!isExporting" class="size-4" aria-hidden="true" />
+          Exporter
+        </BaseButton>
+        <BaseButton
+          v-if="can('client:create')"
+          variant="outline"
+          @click="isImportDialogOpen = true"
+        >
+          <Upload class="size-4" aria-hidden="true" />
+          Importer
+        </BaseButton>
+        <BaseButton v-if="can('client:update')" variant="outline" @click="isMergeDialogOpen = true">
+          <GitMerge class="size-4" aria-hidden="true" />
+          Fusionner
+        </BaseButton>
         <BaseButton v-if="can('client:create')" @click="openCreateForm">
           <Plus class="size-4" aria-hidden="true" />
           Nouveau client
@@ -204,6 +248,21 @@ function viewClient(client: Client): void {
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
+    />
+
+    <ClientImportDialog
+      ref="importDialogRef"
+      :open="isImportDialogOpen"
+      :submitting="isImporting"
+      @import="onImport"
+      @close="isImportDialogOpen = false"
+    />
+
+    <MergeClientsDialog
+      :open="isMergeDialogOpen"
+      :submitting="isMerging"
+      @merge="onMerge"
+      @close="isMergeDialogOpen = false"
     />
   </div>
 </template>

@@ -1,4 +1,4 @@
-import type { InvoicePaymentStatus, PaymentMethod, PaymentStatus } from '@/types'
+import type { InstallmentStatus, InvoicePaymentStatus, PaymentMethod, PaymentStatus } from '@/types'
 
 /** Libelles affichables des moyens de paiement. */
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -52,4 +52,21 @@ export const INVOICE_PAYMENT_STATUS_BADGE_VARIANT: Record<
   unpaid: 'danger',
   partially_paid: 'warning',
   paid: 'success'
+}
+
+/** Libelles affichables du statut d'une echeance d'echeancier de paiement. */
+export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
+  pending: 'A venir',
+  paid: 'Payee',
+  overdue: 'En retard'
+}
+
+/** Variante de `BaseBadge` associee au statut d'une echeance d'echeancier de paiement. */
+export const INSTALLMENT_STATUS_BADGE_VARIANT: Record<
+  InstallmentStatus,
+  'default' | 'success' | 'warning' | 'danger' | 'info'
+> = {
+  pending: 'default',
+  paid: 'success',
+  overdue: 'danger'
 }

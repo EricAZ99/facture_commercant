@@ -24,3 +24,14 @@ const adminAuthStore = useAdminAuthStore()
 Promise.all([authStore.fetchCurrentUser(), adminAuthStore.fetchCurrentAdmin()]).finally(() => {
   app.mount('#app')
 })
+
+// PWA : enregistre le service worker uniquement en production (le HMR de
+// Vite en dev serait perturbe par un cache intermediaire).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Installation non critique : l'application reste pleinement
+      // fonctionnelle sans service worker.
+    })
+  })
+}

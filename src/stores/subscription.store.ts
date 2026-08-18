@@ -41,8 +41,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     }
   }
 
-  async function changePlan(planId: ID): Promise<Subscription> {
-    const updated = await subscriptionService.changePlan({ planId })
+  async function changePlan(planId: ID, promoCode?: string): Promise<Subscription> {
+    const updated = await subscriptionService.changePlan({ planId, promoCode })
     current.value = updated
     return updated
   }

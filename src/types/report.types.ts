@@ -48,3 +48,17 @@ export interface TopClientReportItem {
   invoicesCount: number
   totalSpent: number
 }
+
+/** TVA collectee pour un taux donne sur la periode. */
+export interface VatReportItem {
+  taxRate: number
+  taxableAmount: number
+  taxAmount: number
+}
+
+/** Ventilation complete de la TVA collectee sur la periode (rapport dedie declaration fiscale). */
+export interface VatReport {
+  items: VatReportItem[]
+  totalTaxableAmount: number
+  totalTaxAmount: number
+}

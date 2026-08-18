@@ -1,5 +1,12 @@
 import { API_ENDPOINTS } from '@/constants'
-import type { ApiResponse, ChangePlanPayload, Subscription, SubscriptionPlan } from '@/types'
+import type {
+  ApiResponse,
+  ChangePlanPayload,
+  ID,
+  Subscription,
+  SubscriptionInvoice,
+  SubscriptionPlan
+} from '@/types'
 
 import { apiClient } from './api'
 
@@ -32,5 +39,20 @@ export const subscriptionService = {
       API_ENDPOINTS.subscription.cancel
     )
     return data.data
+  },
+
+  async listInvoices(): Promise<SubscriptionInvoice[]> {
+    const { data } = await apiClient.get<ApiResponse<SubscriptionInvoice[]>>(
+      API_ENDPOINTS.subscription.invoices
+    )
+    return data.data
+  },
+
+  /** Telecharge le recu PDF d'un cycle de facturation passe. */
+  async downloadReceipt(id: ID): Promise<Blob> {
+    const { data } = await apiClient.get(API_ENDPOINTS.subscription.receipt(id), {
+      responseType: 'blob'
+    })
+    return data
   }
 }

@@ -1,8 +1,11 @@
 import {
   BarChart3,
+  ClipboardList,
   CreditCard,
+  FileMinus,
   FileText,
   LayoutDashboard,
+  LifeBuoy,
   Package,
   Settings,
   UserCog,
@@ -34,9 +37,21 @@ export const NAV_ITEMS: NavItem[] = [
     permission: 'product:read'
   },
   {
+    label: 'Devis',
+    routeName: ROUTE_NAMES.quotes,
+    icon: ClipboardList,
+    permission: 'invoice:read'
+  },
+  {
     label: 'Factures',
     routeName: ROUTE_NAMES.invoices,
     icon: FileText,
+    permission: 'invoice:read'
+  },
+  {
+    label: 'Avoirs',
+    routeName: ROUTE_NAMES.creditNotes,
+    icon: FileMinus,
     permission: 'invoice:read'
   },
   {
@@ -63,5 +78,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: CreditCard,
     permission: 'subscription:read'
   },
-  { label: 'Parametres', routeName: ROUTE_NAMES.settings, icon: Settings }
+  { label: 'Parametres', routeName: ROUTE_NAMES.settings, icon: Settings },
+  { label: 'Support', routeName: ROUTE_NAMES.support, icon: LifeBuoy }
 ]

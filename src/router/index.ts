@@ -84,6 +84,32 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'invoice:read' }
       },
       {
+        path: 'quotes',
+        name: ROUTE_NAMES.quotes,
+        component: () => import('@/pages/QuotesPage.vue'),
+        meta: { permission: 'invoice:read' }
+      },
+      {
+        // Meme remarque que pour `invoices/create` : ordre statique/dynamique.
+        path: 'quotes/create',
+        name: ROUTE_NAMES.quoteCreate,
+        component: () => import('@/pages/QuoteCreatePage.vue'),
+        meta: { permission: 'invoice:create' }
+      },
+      {
+        path: 'quotes/:id',
+        name: ROUTE_NAMES.quoteDetail,
+        component: () => import('@/pages/QuoteDetailPage.vue'),
+        props: true,
+        meta: { permission: 'invoice:read' }
+      },
+      {
+        path: 'credit-notes',
+        name: ROUTE_NAMES.creditNotes,
+        component: () => import('@/pages/CreditNotesPage.vue'),
+        meta: { permission: 'invoice:read' }
+      },
+      {
         path: 'payments',
         name: ROUTE_NAMES.payments,
         component: () => import('@/pages/PaymentsPage.vue'),
@@ -111,6 +137,17 @@ const routes: RouteRecordRaw[] = [
         path: 'settings',
         name: ROUTE_NAMES.settings,
         component: () => import('@/pages/SettingsPage.vue')
+      },
+      {
+        path: 'support',
+        name: ROUTE_NAMES.support,
+        component: () => import('@/pages/SupportPage.vue')
+      },
+      {
+        path: 'support/:id',
+        name: ROUTE_NAMES.supportDetail,
+        component: () => import('@/pages/SupportDetailPage.vue'),
+        props: true
       }
     ]
   },
@@ -175,6 +212,27 @@ const routes: RouteRecordRaw[] = [
         path: 'plans',
         name: ROUTE_NAMES.adminPlans,
         component: () => import('@/pages/admin/AdminPlansPage.vue')
+      },
+      {
+        path: 'admins',
+        name: ROUTE_NAMES.adminAdmins,
+        component: () => import('@/pages/admin/AdminAdminsPage.vue')
+      },
+      {
+        path: 'support',
+        name: ROUTE_NAMES.adminSupport,
+        component: () => import('@/pages/admin/AdminSupportPage.vue')
+      },
+      {
+        path: 'support/:id',
+        name: ROUTE_NAMES.adminSupportDetail,
+        component: () => import('@/pages/admin/AdminSupportDetailPage.vue'),
+        props: true
+      },
+      {
+        path: 'settings',
+        name: ROUTE_NAMES.adminSettings,
+        component: () => import('@/pages/admin/AdminSettingsPage.vue')
       }
     ]
   },
@@ -182,6 +240,15 @@ const routes: RouteRecordRaw[] = [
     path: '/403',
     name: ROUTE_NAMES.forbidden,
     component: () => import('@/pages/ForbiddenPage.vue')
+  },
+  {
+    // Echange un ticket de mode "apercu" admin contre une session
+    // commercant : accessible independamment de l'etat d'authentification
+    // courant (voir `ImpersonatePage.vue`), jamais sous `requiresAuth`/`guestOnly`.
+    path: '/apercu/:ticket',
+    name: ROUTE_NAMES.impersonate,
+    component: () => import('@/pages/ImpersonatePage.vue'),
+    props: true
   },
   {
     path: '/:pathMatch(.*)*',

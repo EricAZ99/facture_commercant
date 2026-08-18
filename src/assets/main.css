@@ -10,6 +10,27 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+
+  /* Accessibilite : taille de police ajustable (voir `useAccessibility.ts`).
+     Applique sur `html` pour que `rem` (utilise partout via Tailwind) suive. */
+  html.a11y-scale-large {
+    font-size: 112.5%; /* 18px */
+  }
+  html.a11y-scale-xlarge {
+    font-size: 125%; /* 20px */
+  }
+
+  /* Accessibilite : contraste eleve — bordures et textes secondaires renforces. */
+  html.a11y-high-contrast {
+    @apply contrast-125;
+  }
+  html.a11y-high-contrast :is(.text-gray-400, .text-gray-500) {
+    @apply text-gray-700;
+  }
+  html.a11y-high-contrast .border-gray-100,
+  html.a11y-high-contrast .border-gray-200 {
+    @apply border-gray-400;
+  }
 }
 
 @layer components {

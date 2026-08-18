@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { LayoutDashboard, LogOut, Receipt, Store, Wallet } from 'lucide-vue-next'
+import {
+  LayoutDashboard,
+  LifeBuoy,
+  LogOut,
+  Receipt,
+  Settings,
+  Shield,
+  Store,
+  Wallet
+} from 'lucide-vue-next'
 import { onMounted, ref } from 'vue'
 
+import AdminNotificationBell from '@/components/admin/AdminNotificationBell.vue'
 import { useAdminAuth } from '@/composables'
 import { ROUTE_NAMES } from '@/constants'
 import { useAdminAuthStore } from '@/stores'
@@ -13,7 +23,10 @@ const { logoutAndRedirect } = useAdminAuth()
 const navItems = [
   { label: 'Tableau de bord', routeName: ROUTE_NAMES.adminDashboard, icon: LayoutDashboard },
   { label: 'Commercants', routeName: ROUTE_NAMES.adminBusinesses, icon: Store },
-  { label: 'Plans', routeName: ROUTE_NAMES.adminPlans, icon: Wallet }
+  { label: 'Plans', routeName: ROUTE_NAMES.adminPlans, icon: Wallet },
+  { label: 'Support', routeName: ROUTE_NAMES.adminSupport, icon: LifeBuoy },
+  { label: 'Administrateurs', routeName: ROUTE_NAMES.adminAdmins, icon: Shield },
+  { label: 'Parametres', routeName: ROUTE_NAMES.adminSettings, icon: Settings }
 ]
 
 const isMenuOpen = ref(false)
@@ -58,40 +71,44 @@ async function onLogout(): Promise<void> {
           </nav>
         </div>
 
-        <div ref="menuRef" class="relative">
-          <button
-            type="button"
-            class="focus-ring flex items-center gap-2 rounded-lg px-2 py-1.5 text-gray-200 hover:bg-gray-800"
-            aria-label="Menu administrateur"
-            :aria-expanded="isMenuOpen"
-            @click="isMenuOpen = !isMenuOpen"
-          >
-            <span
-              class="flex size-7 items-center justify-center rounded-full bg-primary-500/20 text-xs font-semibold text-primary-300"
-            >
-              {{
-                getInitials(
-                  `${adminAuthStore.admin?.firstName ?? ''} ${adminAuthStore.admin?.lastName ?? ''}`
-                )
-              }}
-            </span>
-          </button>
+        <div class="flex items-center gap-2">
+          <AdminNotificationBell />
 
-          <div
-            v-if="isMenuOpen"
-            class="absolute right-0 mt-2 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-          >
-            <p class="truncate px-3 py-2 text-sm text-gray-500">
-              {{ adminAuthStore.admin?.email }}
-            </p>
+          <div ref="menuRef" class="relative">
             <button
               type="button"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-              @click="onLogout"
+              class="focus-ring flex items-center gap-2 rounded-lg px-2 py-1.5 text-gray-200 hover:bg-gray-800"
+              aria-label="Menu administrateur"
+              :aria-expanded="isMenuOpen"
+              @click="isMenuOpen = !isMenuOpen"
             >
-              <LogOut class="size-4" aria-hidden="true" />
-              Se deconnecter
+              <span
+                class="flex size-7 items-center justify-center rounded-full bg-primary-500/20 text-xs font-semibold text-primary-300"
+              >
+                {{
+                  getInitials(
+                    `${adminAuthStore.admin?.firstName ?? ''} ${adminAuthStore.admin?.lastName ?? ''}`
+                  )
+                }}
+              </span>
             </button>
+
+            <div
+              v-if="isMenuOpen"
+              class="absolute right-0 mt-2 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            >
+              <p class="truncate px-3 py-2 text-sm text-gray-500">
+                {{ adminAuthStore.admin?.email }}
+              </p>
+              <button
+                type="button"
+                class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                @click="onLogout"
+              >
+                <LogOut class="size-4" aria-hidden="true" />
+                Se deconnecter
+              </button>
+            </div>
           </div>
         </div>
       </div>

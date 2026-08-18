@@ -29,7 +29,7 @@ export const useUsersStore = defineStore('users', () => {
 
   const isLoading = computed(() => status.value === 'loading')
 
-  async function fetchUsers(params?: ListQueryParams): Promise<void> {
+  async function fetchUsers(params?: ListQueryParams & { department?: string }): Promise<void> {
     status.value = 'loading'
     error.value = null
     try {

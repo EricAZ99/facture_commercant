@@ -9,9 +9,11 @@ import type {
   ID,
   Invoice,
   PaymentMethod,
+  PriceBreak,
   Product
 } from '@/types'
 import { computeInvoiceTotals } from '@/utils/invoiceCalculations'
+import { resolveUnitPrice } from '@/utils/productPricing'
 
 import { useToast } from './useToast'
 
@@ -24,6 +26,13 @@ export interface InvoiceBuilderLine {
   quantity: number
   unitPrice: number
   taxRate: number
+  /**
+   * Prix de base et tarifs degressifs du produit source (etat local
+   * uniquement, jamais envoye a l'API) : permet de reajuster `unitPrice`
+   * automatiquement quand la quantite change. Absent pour une ligne libre.
+   */
+  basePrice?: number
+  priceBreaks?: PriceBreak[]
 }
 
 export type InvoiceSubmitMode = 'draft' | 'final'
@@ -115,17 +124,29 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
 
   /** Ajoute une ligne pre-remplie depuis un produit/service du catalogue. */
   function addProduct(product: Product): void {
+    const quantity = 1
     addLine({
       productId: product.id,
       description: product.name,
-      unitPrice: product.price,
-      taxRate: product.taxRate
+      quantity,
+      unitPrice: resolveUnitPrice(product.price, product.priceBreaks, quantity),
+      taxRate: product.taxRate,
+      basePrice: product.price,
+      priceBreaks: product.priceBreaks
     })
   }
 
   function updateLine(key: string, patch: Partial<Omit<InvoiceBuilderLine, 'key'>>): void {
     const line = lines.value.find((item) => item.key === key)
-    if (line) Object.assign(line, patch)
+    if (!line) return
+
+    Object.assign(line, patch)
+
+    // Un changement de quantite sur une ligne issue du catalogue reapplique
+    // automatiquement le palier de tarif degressif correspondant.
+    if (patch.quantity !== undefined && line.basePrice !== undefined) {
+      line.unitPrice = resolveUnitPrice(line.basePrice, line.priceBreaks, line.quantity)
+    }
   }
 
   function removeLine(key: string): void {

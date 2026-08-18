@@ -12,24 +12,28 @@ import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
 import UserForm from '@/components/users/UserForm.vue'
 import UserList from '@/components/users/UserList.vue'
+import UserPermissionsDialog from '@/components/users/UserPermissionsDialog.vue'
 import { useUsers } from '@/composables'
 import { useAuthStore } from '@/stores'
-import type { ApiError, CreateUserPayload, User, UserRole } from '@/types'
+import type { ApiError, CreateUserPayload, Permission, User, UserRole } from '@/types'
 
 const authStore = useAuthStore()
 
 const {
   store,
   search,
+  departmentFilter,
   pagination,
   isSubmitting,
   isDeleting,
+  isUpdatingPermissions,
   load,
   nextPage,
   prevPage,
   submitInvite,
   changeRole,
   toggleActive,
+  updatePermissions,
   removeUser
 } = useUsers()
 
@@ -66,6 +70,20 @@ async function onChangeRole(user: User, role: UserRole): Promise<void> {
   await changeRole(user, role)
 }
 
+// --- Permissions ------------------------------------------------------
+
+const userEditingPermissions = ref<User | null>(null)
+
+function openPermissionsDialog(user: User): void {
+  userEditingPermissions.value = user
+}
+
+async function onPermissionsSubmit(permissions: Permission[]): Promise<void> {
+  if (!userEditingPermissions.value) return
+  const success = await updatePermissions(userEditingPermissions.value, permissions)
+  if (success) userEditingPermissions.value = null
+}
+
 // --- Suppression ------------------------------------------------------
 
 const userPendingDelete = ref<User | null>(null)
@@ -93,8 +111,8 @@ async function confirmDelete(): Promise<void> {
     </PageHeader>
 
     <BaseCard>
-      <div class="mb-4">
-        <div class="relative max-w-sm">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row">
+        <div class="relative max-w-sm flex-1">
           <Search
             class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
           />
@@ -105,6 +123,12 @@ async function confirmDelete(): Promise<void> {
             class="focus-ring w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
+        <input
+          v-model="departmentFilter"
+          type="search"
+          placeholder="Filtrer par departement..."
+          class="focus-ring w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
+        />
       </div>
 
       <LoadingState
@@ -133,6 +157,7 @@ async function confirmDelete(): Promise<void> {
           :current-user-id="authStore.user?.id ?? ''"
           @change-role="onChangeRole"
           @toggle-active="toggleActive"
+          @edit-permissions="openPermissionsDialog"
           @delete="askDelete"
         />
 
@@ -169,6 +194,20 @@ async function confirmDelete(): Promise<void> {
         :server-errors="formServerErrors"
         @submit="onFormSubmit"
         @cancel="closeForm"
+      />
+    </BaseModal>
+
+    <BaseModal
+      :open="userEditingPermissions !== null"
+      title="Modifier les permissions"
+      @close="userEditingPermissions = null"
+    >
+      <UserPermissionsDialog
+        v-if="userEditingPermissions"
+        :user="userEditingPermissions"
+        :submitting="isUpdatingPermissions"
+        @submit="onPermissionsSubmit"
+        @cancel="userEditingPermissions = null"
       />
     </BaseModal>
 

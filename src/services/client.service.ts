@@ -2,9 +2,11 @@ import { API_ENDPOINTS } from '@/constants'
 import type {
   ApiResponse,
   Client,
+  ClientImportResult,
   CreateClientPayload,
   ID,
   ListQueryParams,
+  MergeClientsPayload,
   PaginatedResponse,
   UpdateClientPayload
 } from '@/types'
@@ -40,5 +42,20 @@ export const clientService = {
 
   async remove(id: ID): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.clients.byId(id))
+  },
+
+  /** Importe plusieurs clients en une fois (ex: issus d'un CSV) ; renvoie un bilan ligne par ligne. */
+  async importMany(clients: CreateClientPayload[]): Promise<ClientImportResult> {
+    const { data } = await apiClient.post<ApiResponse<ClientImportResult>>(
+      API_ENDPOINTS.clients.import,
+      { clients }
+    )
+    return data.data
+  },
+
+  /** Fusionne deux fiches en doublon (voir `MergeClientsPayload`). */
+  async merge(payload: MergeClientsPayload): Promise<Client> {
+    const { data } = await apiClient.post<ApiResponse<Client>>(API_ENDPOINTS.clients.merge, payload)
+    return data.data
   }
 }

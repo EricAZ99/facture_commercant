@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 
 import { businessService } from '@/services'
-import type { Business, UpdateBusinessPayload } from '@/types'
+import type { Business, BusinessDataExport, UpdateBusinessPayload } from '@/types'
 
 import { useAuthStore } from './auth.store'
 
@@ -26,5 +26,25 @@ export const useBusinessStore = defineStore('business', () => {
     return business
   }
 
-  return { updateBusiness, uploadLogo }
+  async function uploadStamp(file: File): Promise<Business> {
+    const business = await businessService.uploadStamp(file)
+    useAuthStore().setBusiness(business)
+    return business
+  }
+
+  async function regenerateApiKey(): Promise<Business> {
+    const business = await businessService.regenerateApiKey()
+    useAuthStore().setBusiness(business)
+    return business
+  }
+
+  function exportData(): Promise<BusinessDataExport> {
+    return businessService.exportData()
+  }
+
+  function deleteAccount(confirmName: string): Promise<void> {
+    return businessService.deleteAccount(confirmName)
+  }
+
+  return { updateBusiness, uploadLogo, uploadStamp, regenerateApiKey, exportData, deleteAccount }
 })

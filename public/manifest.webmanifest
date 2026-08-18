@@ -1,0 +1,19 @@
+{
+  "name": "Facture IA",
+  "short_name": "Facture IA",
+  "description": "Facturation et gestion pour commerces",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#2563eb",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -29,6 +29,7 @@ interface UserFormState {
   email: string
   phone: string
   role: UserRole
+  department: string
 }
 
 const form = reactive<UserFormState>({
@@ -36,7 +37,8 @@ const form = reactive<UserFormState>({
   lastName: '',
   email: '',
   phone: '',
-  role: 'cashier'
+  role: 'cashier',
+  department: ''
 })
 
 const localErrors = reactive<Partial<Record<keyof UserFormState, string>>>({})
@@ -65,7 +67,8 @@ function onSubmit(): void {
     lastName: form.lastName.trim(),
     email: form.email.trim(),
     phone: form.phone.trim() || undefined,
-    role: form.role
+    role: form.role,
+    department: form.department.trim() || undefined
   })
 }
 </script>
@@ -95,6 +98,11 @@ function onSubmit(): void {
       label="Telephone"
       hint="Optionnel."
       :error="fieldError('phone')"
+    />
+    <BaseInput
+      v-model="form.department"
+      label="Departement"
+      hint="Optionnel, ex: Ventes, Comptabilite."
     />
 
     <div class="flex flex-col gap-1.5">

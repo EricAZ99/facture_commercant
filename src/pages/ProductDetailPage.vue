@@ -5,12 +5,14 @@ import { useRouter } from 'vue-router'
 
 import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
 import ProductDetails from '@/components/products/ProductDetails.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
+import ProductImageUploader from '@/components/products/ProductImageUploader.vue'
+import ProductStockPanel from '@/components/products/ProductStockPanel.vue'
+import PageHeader from '@/components/layout/PageHeader.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
-import { useApi, useProducts } from '@/composables'
+import { useApi, useProducts, useProductStock } from '@/composables'
 import { ROUTE_NAMES } from '@/constants'
 import { productService } from '@/services'
 import { useAuthStore } from '@/stores'
@@ -29,7 +31,34 @@ const { isSubmitting, isDeleting, submitUpdate, removeProduct } = useProducts()
 
 const { data: product, isLoading, isError, error, execute } = useApi(productService.getById)
 
-onMounted(() => execute(props.id))
+const {
+  isUploadingImage,
+  isAdjustingStock,
+  movements,
+  isLoadingMovements,
+  uploadImage,
+  loadMovements,
+  adjustStock
+} = useProductStock(props.id)
+
+onMounted(async () => {
+  await execute(props.id)
+  if (product.value?.type === 'product') void loadMovements()
+})
+
+// --- Photo ------------------------------------------------------------
+
+async function onImageUpload(file: File): Promise<void> {
+  const updated = await uploadImage(file)
+  if (updated) product.value = updated
+}
+
+// --- Stock --------------------------------------------------------------
+
+async function onStockAdjust(delta: number, reason: string): Promise<void> {
+  const updated = await adjustStock(delta, reason)
+  if (updated) product.value = updated
+}
 
 // --- Modification ---------------------------------------------------------
 
@@ -79,13 +108,32 @@ async function confirmDelete(): Promise<void> {
     <LoadingState v-if="isLoading" message="Chargement du produit..." />
     <ErrorState v-else-if="isError" :message="error?.message" @retry="() => execute(props.id)" />
 
-    <ProductDetails
-      v-else-if="product"
-      :product="product"
-      :currency="currency"
-      @edit="openEditForm"
-      @delete="isDeleteDialogOpen = true"
-    />
+    <div v-else-if="product" class="flex flex-col gap-4">
+      <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p class="mb-3 text-sm font-semibold text-gray-900">Photo</p>
+        <ProductImageUploader
+          :image-url="product.imageUrl"
+          :uploading="isUploadingImage"
+          @upload="onImageUpload"
+        />
+      </div>
+
+      <ProductDetails
+        :product="product"
+        :currency="currency"
+        @edit="openEditForm"
+        @delete="isDeleteDialogOpen = true"
+      />
+
+      <ProductStockPanel
+        v-if="product.type === 'product'"
+        :current-stock="product.stock ?? 0"
+        :movements="movements"
+        :is-loading-movements="isLoadingMovements"
+        :is-adjusting="isAdjustingStock"
+        @adjust="onStockAdjust"
+      />
+    </div>
 
     <BaseModal :open="isFormOpen" title="Modifier le produit" @close="isFormOpen = false">
       <ProductForm

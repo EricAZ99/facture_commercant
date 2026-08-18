@@ -1,7 +1,7 @@
 import { onUnmounted, ref, watch } from 'vue'
 
 import { useUsersStore } from '@/stores'
-import type { ApiError, CreateUserPayload, User, UserRole } from '@/types'
+import type { ApiError, CreateUserPayload, Permission, User, UserRole } from '@/types'
 
 import { usePagination } from './usePagination'
 import { useToast } from './useToast'
@@ -20,14 +20,17 @@ export function useUsers() {
   const pagination = usePagination(10)
 
   const search = ref('')
+  const departmentFilter = ref('')
   const isSubmitting = ref(false)
   const isDeleting = ref(false)
+  const isUpdatingPermissions = ref(false)
 
   async function load(): Promise<void> {
     await store.fetchUsers({
       page: pagination.page.value,
       perPage: pagination.perPage.value,
-      search: search.value.trim() || undefined
+      search: search.value.trim() || undefined,
+      department: departmentFilter.value.trim() || undefined
     })
     if (store.status === 'success') {
       pagination.applyMeta(store.meta)
@@ -52,9 +55,9 @@ export function useUsers() {
     void load()
   }
 
-  // Debounce de la recherche : evite une requete a chaque frappe.
+  // Debounce de la recherche/du filtre departement : evite une requete a chaque frappe.
   let debounceTimer: ReturnType<typeof setTimeout> | undefined
-  watch(search, () => {
+  watch([search, departmentFilter], () => {
     if (debounceTimer) clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
       pagination.goToPage(1)
@@ -109,6 +112,22 @@ export function useUsers() {
     }
   }
 
+  /** Affine la matrice de permissions d'un utilisateur au-dela du jeu par defaut de son role. */
+  async function updatePermissions(user: User, permissions: Permission[]): Promise<boolean> {
+    isUpdatingPermissions.value = true
+    try {
+      await store.updateUser(user.id, { permissions })
+      toast.success(`Permissions de ${user.firstName} ${user.lastName} mises a jour.`)
+      await load()
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isUpdatingPermissions.value = false
+    }
+  }
+
   async function removeUser(user: User): Promise<boolean> {
     isDeleting.value = true
     try {
@@ -133,9 +152,11 @@ export function useUsers() {
   return {
     store,
     search,
+    departmentFilter,
     pagination,
     isSubmitting,
     isDeleting,
+    isUpdatingPermissions,
     load,
     goToPage,
     nextPage,
@@ -143,6 +164,7 @@ export function useUsers() {
     submitInvite,
     changeRole,
     toggleActive,
+    updatePermissions,
     removeUser
   }
 }

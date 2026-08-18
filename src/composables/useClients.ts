@@ -1,7 +1,17 @@
 import { onUnmounted, ref, watch } from 'vue'
 
+import { clientService } from '@/services'
 import { useClientsStore } from '@/stores'
-import type { ApiError, Client, CreateClientPayload, ID, UpdateClientPayload } from '@/types'
+import type {
+  ApiError,
+  Client,
+  ClientImportResult,
+  CreateClientPayload,
+  ID,
+  UpdateClientPayload
+} from '@/types'
+import { clientsToCsv, parseClientsCsv } from '@/utils/clientCsv'
+import { downloadCsv } from '@/utils/csv'
 
 import { usePagination } from './usePagination'
 import { useToast } from './useToast'
@@ -22,6 +32,9 @@ export function useClients() {
   const search = ref('')
   const isSubmitting = ref(false)
   const isDeleting = ref(false)
+  const isExporting = ref(false)
+  const isImporting = ref(false)
+  const isMerging = ref(false)
 
   async function load(): Promise<void> {
     await store.fetchClients({
@@ -118,18 +131,88 @@ export function useClients() {
     }
   }
 
+  /** Exporte en CSV tous les clients correspondant a la recherche en cours (pas seulement la page affichee). */
+  async function exportClients(): Promise<void> {
+    isExporting.value = true
+    try {
+      const response = await clientService.list({
+        search: search.value.trim() || undefined,
+        page: 1,
+        perPage: 10000
+      })
+      const csv = clientsToCsv(response.data)
+      downloadCsv(`clients-${new Date().toISOString().slice(0, 10)}.csv`, csv)
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  /** Parse et importe un fichier CSV de clients ; renvoie le bilan (succes/erreurs par ligne). */
+  async function importClientsFromCsv(fileText: string): Promise<ClientImportResult | null> {
+    const { clients, errors: parseErrors } = parseClientsCsv(fileText)
+    if (clients.length === 0) {
+      toast.error('Aucune ligne valide trouvee dans le fichier.')
+      return { createdCount: 0, errors: parseErrors }
+    }
+
+    isImporting.value = true
+    try {
+      const result = await clientService.importMany(clients.map((c) => c.payload))
+      const allErrors = [...parseErrors, ...result.errors]
+      if (result.createdCount > 0) {
+        toast.success(`${result.createdCount} client(s) importe(s) avec succes.`)
+        await load()
+      }
+      if (allErrors.length > 0) {
+        toast.error(`${allErrors.length} ligne(s) n'ont pas pu etre importees.`)
+      }
+      return { createdCount: result.createdCount, errors: allErrors }
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return null
+    } finally {
+      isImporting.value = false
+    }
+  }
+
+  /** Fusionne deux fiches en doublon : `duplicate` est supprime, ses factures/paiements rattaches a `primary`. */
+  async function mergeClients(primary: Client, duplicate: Client): Promise<boolean> {
+    isMerging.value = true
+    try {
+      await clientService.merge({ primaryId: primary.id, duplicateId: duplicate.id })
+      toast.success(
+        `${duplicate.firstName} ${duplicate.lastName} a ete fusionne avec ${primary.firstName} ${primary.lastName}.`
+      )
+      await load()
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isMerging.value = false
+    }
+  }
+
   return {
     store,
     search,
     pagination,
     isSubmitting,
     isDeleting,
+    isExporting,
+    isImporting,
+    isMerging,
     load,
     goToPage,
     nextPage,
     prevPage,
     submitCreate,
     submitUpdate,
-    removeClient
+    removeClient,
+    exportClients,
+    importClientsFromCsv,
+    mergeClients
   }
 }

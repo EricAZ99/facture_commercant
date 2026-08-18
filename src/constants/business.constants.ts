@@ -1,4 +1,4 @@
-import type { BusinessType } from '@/types'
+import type { BusinessType, Weekday } from '@/types'
 
 /** Libelles affichables des categories de commerce. */
 export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
@@ -33,3 +33,22 @@ export const LOGO_MAX_SIZE_BYTES = 2 * 1024 * 1024
 
 /** Types MIME acceptes pour le logo du commerce. */
 export const LOGO_ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+
+/** Jours de la semaine dans l'ordre d'affichage, avec leur libelle. */
+export const WEEKDAYS: Array<{ value: Weekday; label: string }> = [
+  { value: 'monday', label: 'Lundi' },
+  { value: 'tuesday', label: 'Mardi' },
+  { value: 'wednesday', label: 'Mercredi' },
+  { value: 'thursday', label: 'Jeudi' },
+  { value: 'friday', label: 'Vendredi' },
+  { value: 'saturday', label: 'Samedi' },
+  { value: 'sunday', label: 'Dimanche' }
+]
+
+/** Evenements disponibles pour les webhooks developpeur (mock : ne declenche jamais reellement d'appel). */
+export const WEBHOOK_EVENT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'invoice.created', label: 'Facture creee' },
+  { value: 'invoice.paid', label: 'Facture payee' },
+  { value: 'payment.received', label: 'Paiement recu' },
+  { value: 'client.created', label: 'Client cree' }
+]

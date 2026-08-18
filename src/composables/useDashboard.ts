@@ -42,6 +42,10 @@ export function useDashboard() {
   })
   const recentInvoices = useApi(invoiceService.list, { notifyOnError: false })
   const recentActivity = useApi(dashboardService.getRecentActivity, { notifyOnError: false })
+  // Independantes de la periode : les alertes portent sur l'etat actuel du
+  // commerce (factures en retard, stock, abonnement), pas sur une fenetre
+  // temporelle choisie par l'utilisateur.
+  const alerts = useApi(dashboardService.getAlerts, { notifyOnError: false })
 
   // Un seul controleur pour les 3 appels lies a la periode : changer de
   // periode annule immediatement toute requete en vol pour cette periode,
@@ -68,7 +72,8 @@ export function useDashboard() {
         sortBy: 'issueDate',
         sortOrder: 'desc'
       }),
-      recentActivity.execute({ limit: RECENT_ACTIVITY_LIMIT })
+      recentActivity.execute({ limit: RECENT_ACTIVITY_LIMIT }),
+      alerts.execute()
     ])
   }
 
@@ -93,7 +98,8 @@ export function useDashboard() {
         revenue.isLoading.value ||
         paymentBreakdown.isLoading.value ||
         recentInvoices.isLoading.value ||
-        recentActivity.isLoading.value)
+        recentActivity.isLoading.value ||
+        alerts.isLoading.value)
   )
   /** Echec bloquant : meme l'indicateur principal (stats) n'a jamais pu etre charge. */
   const hasFatalError = computed(
@@ -115,6 +121,7 @@ export function useDashboard() {
     paymentBreakdown,
     recentInvoices,
     recentActivity,
+    alerts,
     isInitialLoading,
     isRefreshing,
     hasFatalError,

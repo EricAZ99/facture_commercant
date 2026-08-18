@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Power, PowerOff, Trash2 } from 'lucide-vue-next'
+import { Power, PowerOff, ShieldCheck, Trash2 } from 'lucide-vue-next'
 
 import BaseBadge from '@/components/base/BaseBadge.vue'
 import { INVITABLE_ROLES, ROLE_LABELS } from '@/constants'
@@ -17,6 +17,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   changeRole: [user: User, role: UserRole]
   toggleActive: [user: User]
+  editPermissions: [user: User]
   delete: [user: User]
 }>()
 
@@ -33,6 +34,7 @@ function onRoleChange(user: User, event: Event): void {
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
           <th class="py-2 pr-4 font-medium">Utilisateur</th>
           <th class="py-2 pr-4 font-medium">Role</th>
+          <th class="py-2 pr-4 font-medium">Departement</th>
           <th class="py-2 pr-4 font-medium">Statut</th>
           <th class="py-2 pr-4 font-medium">Derniere connexion</th>
           <th class="py-2 pl-4 text-right font-medium">Actions</th>
@@ -71,6 +73,7 @@ function onRoleChange(user: User, event: Event): void {
               </option>
             </select>
           </td>
+          <td class="py-3 pr-4 text-gray-500">{{ user.department || '-' }}</td>
           <td class="py-3 pr-4">
             <BaseBadge :variant="user.isActive ? 'success' : 'default'">
               {{ user.isActive ? 'Actif' : 'Inactif' }}
@@ -81,6 +84,16 @@ function onRoleChange(user: User, event: Event): void {
           </td>
           <td class="py-3 pl-4">
             <div class="flex justify-end gap-1">
+              <button
+                v-if="user.role !== 'owner' && user.id !== currentUserId"
+                type="button"
+                class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Modifier les permissions"
+                title="Modifier les permissions"
+                @click="emit('editPermissions', user)"
+              >
+                <ShieldCheck class="size-4" />
+              </button>
               <button
                 v-if="user.role !== 'owner' && user.id !== currentUserId"
                 type="button"

@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ArrowLeft } from 'lucide-vue-next'
+import { AlertTriangle, ArrowLeft, Eye } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BaseInput from '@/components/base/BaseInput.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
@@ -14,7 +17,7 @@ import {
   SUBSCRIPTION_STATUS_LABELS
 } from '@/constants'
 import { useAdminBusinessDetail, useAdminPlans } from '@/composables'
-import type { ID } from '@/types'
+import type { ApiError, ID } from '@/types'
 import { formatCurrency, formatDateTime } from '@/utils/formatters'
 
 interface Props {
@@ -22,19 +25,33 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const router = useRouter()
 
 const {
   business,
   isLoading,
   loadError,
   isMutating,
+  isDeleting,
+  isImpersonating,
   auditLog,
   isLoadingAuditLog,
   load,
   loadAuditLog,
   toggleSuspension,
-  changePlan
+  changePlan,
+  applyDiscount,
+  removeBusiness,
+  openPreview
 } = useAdminBusinessDetail(props.id)
+
+const discountInput = ref('')
+async function onApplyDiscount(): Promise<void> {
+  const value = Number(discountInput.value)
+  if (!Number.isFinite(value) || value < 0 || value > 100) return
+  const success = await applyDiscount(value)
+  if (success) discountInput.value = ''
+}
 
 const { store: plansStore, load: loadPlans } = useAdminPlans()
 
@@ -57,6 +74,29 @@ const selectedPlanId = computed({
     if (planId && planId !== business.value?.subscription.plan.id) void changePlan(planId)
   }
 })
+
+// --- Suppression definitive -------------------------------------------
+
+const isDeleteDialogOpen = ref(false)
+const deleteConfirmInput = ref('')
+const deleteError = ref<ApiError | null>(null)
+const isDeleteConfirmMatching = computed(() => deleteConfirmInput.value === business.value?.name)
+
+function openDeleteDialog(): void {
+  deleteConfirmInput.value = ''
+  deleteError.value = null
+  isDeleteDialogOpen.value = true
+}
+
+async function onConfirmDelete(): Promise<void> {
+  if (!isDeleteConfirmMatching.value) return
+  const error = await removeBusiness(deleteConfirmInput.value)
+  if (error) {
+    deleteError.value = error
+    return
+  }
+  await router.push({ name: ROUTE_NAMES.adminBusinesses })
+}
 </script>
 
 <template>
@@ -81,13 +121,19 @@ const selectedPlanId = computed({
           </div>
           <p class="mt-1 text-sm text-gray-500">{{ business.email }}</p>
         </div>
-        <BaseButton
-          :variant="business.isSuspended ? 'primary' : 'danger'"
-          :loading="isMutating"
-          @click="isSuspendDialogOpen = true"
-        >
-          {{ business.isSuspended ? 'Reactiver le commerce' : 'Suspendre le commerce' }}
-        </BaseButton>
+        <div class="flex flex-wrap gap-2">
+          <BaseButton variant="outline" :loading="isImpersonating" @click="openPreview">
+            <Eye class="size-4" aria-hidden="true" />
+            Apercu
+          </BaseButton>
+          <BaseButton
+            :variant="business.isSuspended ? 'primary' : 'danger'"
+            :loading="isMutating"
+            @click="isSuspendDialogOpen = true"
+          >
+            {{ business.isSuspended ? 'Reactiver le commerce' : 'Suspendre le commerce' }}
+          </BaseButton>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -124,6 +170,14 @@ const selectedPlanId = computed({
               <dd class="font-medium text-gray-900">{{ business.invoicesCount }}</dd>
             </div>
           </dl>
+          <dl class="mt-4 border-t border-gray-100 pt-4 text-sm">
+            <div class="flex justify-between">
+              <dt class="text-gray-500">Chiffre d'affaires facture</dt>
+              <dd class="font-medium text-gray-900">
+                {{ formatCurrency(business.revenueTotal, business.currency) }}
+              </dd>
+            </div>
+          </dl>
         </BaseCard>
 
         <BaseCard title="Abonnement">
@@ -151,6 +205,34 @@ const selectedPlanId = computed({
               </option>
             </select>
           </div>
+
+          <div class="mt-4 border-t border-gray-100 pt-4">
+            <p class="mb-1.5 text-sm font-medium text-gray-700">Remise administrative</p>
+            <p v-if="business.subscription.discountPercent" class="mb-2 text-sm text-green-600">
+              Remise active : {{ business.subscription.discountPercent }}% ({{
+                business.subscription.promoCode
+              }})
+            </p>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="discountInput"
+                type="number"
+                min="0"
+                max="100"
+                placeholder="% de remise"
+                class="focus-ring w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+              />
+              <BaseButton
+                variant="outline"
+                size="sm"
+                :loading="isMutating"
+                :disabled="!discountInput"
+                @click="onApplyDiscount"
+              >
+                Appliquer
+              </BaseButton>
+            </div>
+          </div>
         </BaseCard>
       </div>
 
@@ -171,6 +253,22 @@ const selectedPlanId = computed({
           </li>
         </ul>
       </BaseCard>
+
+      <div class="rounded-xl border border-red-200 bg-red-50 p-4 sm:p-6">
+        <div class="flex items-start gap-3">
+          <AlertTriangle class="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
+          <div class="flex-1">
+            <h2 class="text-sm font-semibold text-red-900">Zone dangereuse</h2>
+            <p class="mt-1 text-sm text-red-700">
+              Supprimer definitivement ce commerce et toutes ses donnees, au-dela de la suspension.
+              Cette action ne peut pas etre annulee.
+            </p>
+            <BaseButton variant="danger" size="sm" class="mt-3" @click="openDeleteDialog">
+              Supprimer definitivement
+            </BaseButton>
+          </div>
+        </div>
+      </div>
     </div>
 
     <ConfirmDialog
@@ -187,5 +285,45 @@ const selectedPlanId = computed({
       @confirm="onConfirmSuspendToggle"
       @cancel="isSuspendDialogOpen = false"
     />
+
+    <BaseModal
+      :open="isDeleteDialogOpen"
+      title="Supprimer definitivement le commerce"
+      @close="isDeleteDialogOpen = false"
+    >
+      <div class="flex flex-col gap-4">
+        <div class="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <p>
+            Toutes les donnees de {{ business?.name }} (clients, produits, factures, devis, avoirs,
+            paiements, equipe) seront definitivement supprimees.
+          </p>
+        </div>
+        <BaseInput
+          v-model="deleteConfirmInput"
+          :label="`Saisissez « ${business?.name} » pour confirmer`"
+          :error="deleteError?.details?.confirmName?.[0]"
+          autocomplete="off"
+        />
+        <div class="mt-2 flex justify-end gap-2">
+          <BaseButton
+            type="button"
+            variant="outline"
+            :disabled="isDeleting"
+            @click="isDeleteDialogOpen = false"
+          >
+            Annuler
+          </BaseButton>
+          <BaseButton
+            variant="danger"
+            :disabled="!isDeleteConfirmMatching"
+            :loading="isDeleting"
+            @click="onConfirmDelete"
+          >
+            Supprimer definitivement
+          </BaseButton>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>

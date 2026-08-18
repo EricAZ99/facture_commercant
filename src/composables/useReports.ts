@@ -21,6 +21,8 @@ interface ReportFiltersState {
   productId: string
   clientId: string
   status: InvoiceStatus | ''
+  /** Superpose la periode precedente de meme duree sur le graphique de CA. */
+  comparePrevious: boolean
 }
 
 /**
@@ -38,7 +40,8 @@ export function useReports() {
     period: DEFAULT_PERIOD,
     productId: '',
     clientId: '',
-    status: ''
+    status: '',
+    comparePrevious: false
   })
   const selectedProduct = ref<Product | null>(null)
   const selectedClient = ref<Client | null>(null)
@@ -47,10 +50,27 @@ export function useReports() {
 
   const summary = useApi(reportService.getSummary, { notifyOnError: false })
   const revenue = useApi(reportService.getRevenueEvolution, { notifyOnError: false })
+  const previousRevenue = useApi(reportService.getRevenueComparison, { notifyOnError: false })
   const invoiceStatus = useApi(reportService.getInvoiceStatusBreakdown, { notifyOnError: false })
   const paymentMethods = useApi(reportService.getPaymentMethodBreakdown, { notifyOnError: false })
   const topProducts = useApi(reportService.getTopProducts, { notifyOnError: false })
   const topClients = useApi(reportService.getTopClients, { notifyOnError: false })
+  const vat = useApi(reportService.getVatBreakdown, { notifyOnError: false })
+
+  /**
+   * Projection simple : chiffre d'affaires moyen par jour observe sur la
+   * periode, extrapole sur 30 jours. Uniquement pertinent pour une fenetre
+   * en jours (today/7d/30d) — une semaine ou un mois "moyen" n'a pas de sens
+   * pour des buckets hebdomadaires/mensuels (3m/year), donc masque alors.
+   */
+  const monthlyProjection = computed(() => {
+    if (!['today', '7d', '30d'].includes(filters.period)) return null
+    const points = revenue.data.value
+    if (!points || points.length === 0) return null
+    const total = points.reduce((sum, p) => sum + p.amount, 0)
+    const avgPerDay = total / points.length
+    return Math.round(avgPerDay * 30)
+  })
 
   let controller: AbortController | null = null
 
@@ -74,9 +94,20 @@ export function useReports() {
       invoiceStatus.execute(params),
       paymentMethods.execute(params),
       topProducts.execute(params),
-      topClients.execute(params)
+      topClients.execute(params),
+      vat.execute(params),
+      filters.comparePrevious ? previousRevenue.execute(params) : Promise.resolve(null)
     ])
     hasLoadedOnce.value = true
+  }
+
+  function toggleComparePrevious(): void {
+    filters.comparePrevious = !filters.comparePrevious
+    if (!filters.comparePrevious) {
+      previousRevenue.reset()
+      return
+    }
+    void refresh()
   }
 
   function setPeriod(period: ReportPeriod): void {
@@ -110,8 +141,10 @@ export function useReports() {
     filters.productId = ''
     filters.clientId = ''
     filters.status = ''
+    filters.comparePrevious = false
     selectedProduct.value = null
     selectedClient.value = null
+    previousRevenue.reset()
     void refresh()
   }
 
@@ -124,7 +157,8 @@ export function useReports() {
         invoiceStatus.isLoading.value ||
         paymentMethods.isLoading.value ||
         topProducts.isLoading.value ||
-        topClients.isLoading.value)
+        topClients.isLoading.value ||
+        vat.isLoading.value)
   )
   /** Echec bloquant : meme l'indicateur principal (synthese) n'a jamais pu etre charge. */
   const hasFatalError = computed(
@@ -143,10 +177,13 @@ export function useReports() {
     periodOptions: REPORT_PERIOD_OPTIONS,
     summary,
     revenue,
+    previousRevenue,
     invoiceStatus,
     paymentMethods,
     topProducts,
     topClients,
+    vat,
+    monthlyProjection,
     isInitialLoading,
     isRefreshing,
     hasFatalError,
@@ -155,6 +192,7 @@ export function useReports() {
     setProductFilter,
     setClientFilter,
     setStatusFilter,
+    toggleComparePrevious,
     resetFilters,
     refresh
   }

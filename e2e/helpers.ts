@@ -34,6 +34,19 @@ export function generateNewBusiness(): NewBusiness {
   }
 }
 
+/**
+ * Ferme la banniere d'accueil guidee si elle est visible (premiere visite du
+ * tableau de bord pour ce commerce, voir `OnboardingTour.vue`). Sans effet
+ * si elle n'apparait pas : evite qu'elle n'intercepte les clics suivants
+ * (ex: menu utilisateur du topbar) sans dupliquer cette logique dans chaque test.
+ */
+async function dismissOnboardingIfPresent(page: Page): Promise<void> {
+  const skipButton = page.getByRole('button', { name: 'Passer' })
+  if (await skipButton.isVisible().catch(() => false)) {
+    await skipButton.click()
+  }
+}
+
 /** Inscrit un nouveau commerce via le formulaire d'inscription et attend l'atterrissage sur le tableau de bord. */
 export async function registerViaUi(page: Page, business: NewBusiness): Promise<void> {
   await page.goto('/register')
@@ -46,6 +59,7 @@ export async function registerViaUi(page: Page, business: NewBusiness): Promise<
   // Le tableau de bord vit a la racine ("/") : on verifie le contenu affiche
   // plutot qu'un segment d'URL "/dashboard" qui n'existe pas dans le routeur.
   await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible()
+  await dismissOnboardingIfPresent(page)
 }
 
 /** Connecte un utilisateur existant via le formulaire de connexion et attend l'atterrissage sur le tableau de bord. */
@@ -55,6 +69,7 @@ export async function loginViaUi(page: Page, email: string, password: string): P
   await page.getByLabel('Mot de passe').fill(password)
   await page.getByRole('button', { name: 'Se connecter' }).click()
   await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible()
+  await dismissOnboardingIfPresent(page)
 }
 
 /** Deconnecte l'utilisateur courant via le menu du topbar et attend l'atterrissage sur la page de connexion. */

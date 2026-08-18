@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Package, Plus, Search } from 'lucide-vue-next'
+import { Download, Package, Plus, Search, Upload } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -9,6 +9,7 @@ import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
+import ProductImportDialog from '@/components/products/ProductImportDialog.vue'
 import ProductList from '@/components/products/ProductList.vue'
 import EmptyState from '@/components/states/EmptyState.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
@@ -30,15 +31,32 @@ const {
   pagination,
   isSubmitting,
   isDeleting,
+  isExporting,
+  isImporting,
   load,
   nextPage,
   prevPage,
   submitCreate,
   submitUpdate,
-  removeProduct
+  removeProduct,
+  exportProducts,
+  importProductsFromCsv
 } = useProducts()
 
 onMounted(() => load())
+
+// --- Import / export ------------------------------------------------------
+
+const isImportDialogOpen = ref(false)
+const importDialogRef = ref<InstanceType<typeof ProductImportDialog> | null>(null)
+
+async function onImport(fileText: string): Promise<void> {
+  const result = await importProductsFromCsv(fileText)
+  if (result && result.createdCount > 0 && result.errors.length === 0) {
+    isImportDialogOpen.value = false
+  }
+  importDialogRef.value?.reset()
+}
 
 const categorySuggestions = computed(() =>
   Array.from(new Set(store.items.map((p) => p.category).filter(Boolean))).sort()
@@ -110,6 +128,18 @@ function viewProduct(product: Product): void {
   <div>
     <PageHeader title="Produits" subtitle="Gerez le catalogue de produits et services.">
       <template #actions>
+        <BaseButton variant="outline" :loading="isExporting" @click="exportProducts">
+          <Download v-if="!isExporting" class="size-4" aria-hidden="true" />
+          Exporter
+        </BaseButton>
+        <BaseButton
+          v-if="can('product:create')"
+          variant="outline"
+          @click="isImportDialogOpen = true"
+        >
+          <Upload class="size-4" aria-hidden="true" />
+          Importer
+        </BaseButton>
         <BaseButton v-if="can('product:create')" @click="openCreateForm">
           <Plus class="size-4" aria-hidden="true" />
           Nouveau produit
@@ -215,6 +245,14 @@ function viewProduct(product: Product): void {
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
+    />
+
+    <ProductImportDialog
+      ref="importDialogRef"
+      :open="isImportDialogOpen"
+      :submitting="isImporting"
+      @import="onImport"
+      @close="isImportDialogOpen = false"
     />
   </div>
 </template>

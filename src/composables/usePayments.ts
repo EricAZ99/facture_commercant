@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 
 import { paymentService } from '@/services'
-import type { ApiError, CreatePaymentPayload, ID, Payment } from '@/types'
+import type { ApiError, CreatePaymentPayload, CreateRefundPayload, ID, Payment } from '@/types'
 
 import { useToast } from './useToast'
 
@@ -20,6 +20,9 @@ export function usePayments(invoiceId: ID) {
 
   const isSubmitting = ref(false)
   const submitError = ref<ApiError | null>(null)
+
+  const isRefunding = ref(false)
+  const refundError = ref<ApiError | null>(null)
 
   const totalRegistered = computed(() =>
     payments.value.reduce((sum, payment) => sum + payment.amount, 0)
@@ -59,14 +62,38 @@ export function usePayments(invoiceId: ID) {
     }
   }
 
+  /** Rembourse (totalement ou partiellement) un paiement. */
+  async function refundPayment(
+    payment: Payment,
+    payload: CreateRefundPayload
+  ): Promise<Payment | null> {
+    isRefunding.value = true
+    refundError.value = null
+    try {
+      const updated = await paymentService.refund(payment.id, payload)
+      payments.value = payments.value.map((p) => (p.id === updated.id ? updated : p))
+      toast.success('Remboursement enregistre.')
+      return updated
+    } catch (err) {
+      refundError.value = err as ApiError
+      toast.error((err as ApiError).message)
+      return null
+    } finally {
+      isRefunding.value = false
+    }
+  }
+
   return {
     payments,
     isLoading,
     error,
     isSubmitting,
     submitError,
+    isRefunding,
+    refundError,
     totalRegistered,
     load,
-    registerPayment
+    registerPayment,
+    refundPayment
   }
 }
