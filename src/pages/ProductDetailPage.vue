@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 
 import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
+import CategoryManagerDialog from '@/components/products/CategoryManagerDialog.vue'
 import ProductDetails from '@/components/products/ProductDetails.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
 import ProductImageUploader from '@/components/products/ProductImageUploader.vue'
@@ -12,7 +13,7 @@ import ProductStockPanel from '@/components/products/ProductStockPanel.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
-import { useApi, useProducts, useProductStock } from '@/composables'
+import { useApi, useProductCategories, useProducts, useProductStock } from '@/composables'
 import { ROUTE_NAMES } from '@/constants'
 import { productService } from '@/services'
 import { useAuthStore } from '@/stores'
@@ -28,6 +29,8 @@ const router = useRouter()
 const authStore = useAuthStore()
 const currency = computed(() => authStore.business?.currency ?? 'XOF')
 const { isSubmitting, isDeleting, submitUpdate, removeProduct } = useProducts()
+const { options: categoryOptions, ensureLoaded: ensureCategoriesLoaded } = useProductCategories()
+void ensureCategoriesLoaded()
 
 const { data: product, isLoading, isError, error, execute } = useApi(productService.getById)
 
@@ -64,6 +67,7 @@ async function onStockAdjust(delta: number, reason: string): Promise<void> {
 
 const isFormOpen = ref(false)
 const formServerErrors = ref<Record<string, string[]> | null>(null)
+const isCategoryManagerOpen = ref(false)
 
 function openEditForm(): void {
   formServerErrors.value = null
@@ -140,10 +144,14 @@ async function confirmDelete(): Promise<void> {
         :product="product"
         :submitting="isSubmitting"
         :server-errors="formServerErrors"
+        :category-options="categoryOptions"
         @submit="onFormSubmit"
         @cancel="isFormOpen = false"
+        @manage-categories="isCategoryManagerOpen = true"
       />
     </BaseModal>
+
+    <CategoryManagerDialog :open="isCategoryManagerOpen" @close="isCategoryManagerOpen = false" />
 
     <ConfirmDialog
       :open="isDeleteDialogOpen"

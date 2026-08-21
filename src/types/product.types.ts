@@ -15,7 +15,14 @@ export interface Product {
   businessId: ID
   name: string
   description?: string
-  category: string
+  /** Reference vers une `ProductCategory` (voir `productCategory.types.ts`). */
+  categoryId: ID
+  /**
+   * Chemin complet lisible de la categorie (ex: "Vetements > T-shirts"),
+   * fourni par le backend en complement de `categoryId` (donnee de confort
+   * pour l'affichage, jamais la source de verite de la relation).
+   */
+  categoryPath?: string
   type: ProductType
   price: number
   taxRate: number
@@ -40,11 +47,22 @@ export interface Product {
 /** Payload de creation d'un produit/service. */
 export type CreateProductPayload = Omit<
   Product,
-  'id' | 'businessId' | 'createdAt' | 'updatedAt' | 'imageUrl'
+  'id' | 'businessId' | 'createdAt' | 'updatedAt' | 'imageUrl' | 'categoryPath'
 >
 
 /** Payload de mise a jour partielle d'un produit/service. */
 export type UpdateProductPayload = Partial<CreateProductPayload>
+
+/**
+ * Ligne d'import CSV : la categorie y est saisie en texte libre (chemin
+ * eventuellement hierarchique, ex: "Vetements > T-shirts"), resolue cote
+ * backend en `categoryId` (creation automatique de la chaine manquante si
+ * besoin) — l'import en masse reste ainsi aussi simple qu'avant l'entite
+ * `ProductCategory`, sans forcer une selection ligne par ligne.
+ */
+export type ProductImportPayload = Omit<CreateProductPayload, 'categoryId'> & {
+  categoryPath: string
+}
 
 /** Mouvement de stock (ajustement manuel, historique). */
 export interface ProductStockMovement {

@@ -43,7 +43,7 @@ const emit = defineEmits<{
         </div>
         <div>
           <h2 class="text-lg font-semibold text-gray-900">{{ product.name }}</h2>
-          <p class="mt-1 text-sm text-gray-500">{{ product.category }}</p>
+          <p class="mt-1 text-sm text-gray-500">{{ product.categoryPath ?? 'Non classe' }}</p>
         </div>
       </div>
       <BaseBadge :variant="product.type === 'service' ? 'info' : 'default'">

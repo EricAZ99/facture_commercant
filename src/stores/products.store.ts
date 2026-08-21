@@ -1,13 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { productService } from '@/services'
+import { productService, type ProductListParams } from '@/services'
 import type {
   ApiError,
   AsyncStatus,
   CreateProductPayload,
   ID,
-  ListQueryParams,
   PaginationMeta,
   Product,
   UpdateProductPayload
@@ -29,7 +28,7 @@ export const useProductsStore = defineStore('products', () => {
 
   const isLoading = computed(() => status.value === 'loading')
 
-  async function fetchProducts(params?: ListQueryParams): Promise<void> {
+  async function fetchProducts(params?: ProductListParams): Promise<void> {
     status.value = 'loading'
     error.value = null
     try {

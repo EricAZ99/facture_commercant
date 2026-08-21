@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRightLeft, CheckCircle2, Pencil, Trash2, X } from 'lucide-vue-next'
+import { ArrowLeft, ArrowRightLeft, CheckCircle2, Copy, Pencil, Trash2, X } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -41,7 +41,8 @@ const currency = computed(() => authStore.business?.currency ?? 'XOF')
 const showCreatedBanner = ref(route.query.created === '1')
 
 const { data: quote, isLoading, isError, error, execute } = useApi(quoteService.getById)
-const { isRemoving, isConverting, removeQuote, convertQuote } = useQuoteActions()
+const { isRemoving, isConverting, isDuplicating, removeQuote, convertQuote, duplicateQuote } =
+  useQuoteActions()
 
 async function load(): Promise<void> {
   await execute(props.id)
@@ -91,6 +92,16 @@ async function confirmConvert(): Promise<void> {
   if (invoice) {
     isConvertDialogOpen.value = false
     await router.push({ name: ROUTE_NAMES.invoiceDetail, params: { id: invoice.id } })
+  }
+}
+
+// --- Duplication --------------------------------------------------------
+
+async function onDuplicate(): Promise<void> {
+  if (!quote.value) return
+  const created = await duplicateQuote(quote.value)
+  if (created) {
+    await router.push({ name: ROUTE_NAMES.quoteDetail, params: { id: created.id } })
   }
 }
 
@@ -155,6 +166,10 @@ async function confirmRemove(): Promise<void> {
           >
             <ArrowRightLeft class="size-4" aria-hidden="true" />
             Convertir en facture
+          </BaseButton>
+          <BaseButton variant="outline" size="sm" :loading="isDuplicating" @click="onDuplicate">
+            <Copy v-if="!isDuplicating" class="size-4" aria-hidden="true" />
+            Dupliquer
           </BaseButton>
           <BaseButton
             v-if="canDeleteQuote(quote.status)"

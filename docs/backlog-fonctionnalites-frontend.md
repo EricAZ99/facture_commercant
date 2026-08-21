@@ -32,6 +32,7 @@
 - [x] Solde consolidé affiché sur la fiche (total du toutes factures confondues)
 - [x] Fusion de fiches clients en doublon (reattribution des factures + suppression du doublon)
 - [ ] ~~Relance automatique programmée des impayés~~ — necessite un vrai service d'email + planificateur de taches (infra backend absente), reporte
+- [x] Relance manuelle ponctuelle ("Envoyer un rappel" sur une facture envoyée/partiellement payée/en retard avec solde restant) — ouvre un email pré-rempli au client (mailto, même mécanisme que "Envoyer par email") + télécharge le PDF à joindre, et enregistre l'envoi côté backend (`lastReminderSentAt`, journalisé dans le fil d'activité) ; distinct de la relance automatique programmée ci-dessus, ne nécessite aucun ordonnanceur
 - [ ] ~~Import de contacts (Google/Outlook)~~ — necessite une integration OAuth tierce (Google/Microsoft), hors perimetre de ce projet
 
 ### Produits & services
@@ -43,24 +44,30 @@
 - [x] Code-barres — champ de donnees + recherche (saisie manuelle uniquement, voir note ci-dessous)
 - [ ] ~~Scan de code-barres (camera)~~ — necessiterait une librairie de scan + acces camera ; le champ code-barres existe, seule la capture optique est reportee
 - [ ] ~~Variantes de produit (taille, couleur...)~~ — changerait la relation produit↔ligne de facture en profondeur ; reporte pour ne pas fragiliser le module Factures deja verifie
-- [ ] ~~Produits groupés / kits~~ — necessite une nouvelle entite (Kit) distincte du produit, reporte
-- [ ] ~~Catégories hiérarchiques~~ — necessite une entite Categorie a part entiere pour rester robuste ; reporte plutot que de faire un pis-aller fragile
+- [x] Produits groupés / kits — entite `ProductKit` distincte du produit (`items` = liste produit+quantite, prix de vente force ou calcule comme somme des composants, stock assemblable derive du stock des composants). Page dediee (liste/creation/detail), action "Facturer ce kit" qui cree une facture brouillon (une ligne par composant) en reutilisant directement la creation de facture existante — n'a jamais touche au schema/module Factures deja verifie
+- [x] Catégories hiérarchiques — entite `ProductCategory` a part entiere (`parentId` optionnel), gestionnaire dedie (creer/renommer/deplacer/supprimer avec garde-fous : refuse si sous-categories ou produits rattaches, refuse un deplacement qui creerait un cycle), remplace le champ texte libre sur le produit ; filtre catalogue par categorie (inclut les sous-categories), import CSV toujours en texte libre (chemin hierarchique, creation automatique des segments manquants)
 
 ### Factures
 - [x] **Devis / proforma** — module complet : `Quote`/`QuoteItem`, statuts (brouillon/envoyé/accepté/refusé/expiré/converti), builder réutilisant `InvoiceBuilderLine`/`computeInvoiceTotals`/`InvoiceItemRow`/`InvoiceSummary`, pages liste/création/détail, action "Convertir en facture" (`POST /quotes/:id/convert`, crée une vraie facture et verrouille le devis)
 - [x] **Avoirs / notes de crédit** — émission depuis une facture (envoyée/payée uniquement), sélection ligne par ligne des quantités à créditer, garde-fou serveur anti-dépassement du montant facturé, page globale "Avoirs" + section dédiée sur le détail facture
 - [ ] Factures récurrentes / abonnement client (facturation périodique automatique) — ~~reporté~~ : nécessite un ordonnanceur (cron/tâche planifiée) côté backend réel, hors périmètre du mock-server
-- [ ] Bons de commande / bons de livraison
-- [ ] Modèles de facture visuels multiples (un seul template PDF actuellement)
-- [ ] Champs personnalisés sur la facture — reporté (voir historique des modifications ci-dessous)
-- [ ] Multi-devises par facture (le commerce n'a qu'une devise globale)
+- [ ] Bons de commande / bons de livraison — reporté cette passe : une entité document a part entière (numérotation, statuts, PDF), comparable en volume à Devis+Avoirs combinés ; mérite sa propre passe dédiée plutôt que d'être bâclée au milieu de plusieurs autres chantiers Factures
+- [ ] Modèles de facture visuels multiples — ~~reporté~~ : le générateur PDF actuel est un document texte brut sans mise en page ni image (le logo lui-même n'y figure pas) ; "plusieurs modèles visuels" supposerait d'abord un vrai moteur de mise en page, hors périmètre de ce mock
+- [x] Champs personnalisés sur la facture — paires libellé/valeur ajoutées à la volée dans le formulaire, affichées sur le détail facture et sur le lien public (jamais sur le PDF texte, ni sur les notes internes)
+- [ ] Multi-devises par facture (le commerce n'a qu'une devise globale) — ~~reporté~~ : la devise unique du commerce est une hypothèse structurante dans les factures, rapports, exports et calculs déjà vérifiés ; la conversion multi-devises (taux de change, arrondis) toucherait tout cela en profondeur
 - [x] Numérotation multi-séries (factures/devis/avoirs avec compteurs séparés) — `quoteSettings`/`creditNoteSettings` (`DE-`/`AV-`) ajoutés à `Business`, en plus de `invoiceSettings` (`FA-`) existant
 - [ ] Rappels automatiques avant échéance — ~~reporté~~ : nécessite un ordonnanceur, meme limite que la facturation récurrente
-- [ ] Signature électronique du client
-- [ ] Historique des modifications d'une facture (versions/diff) — reporté, prochaine passe
-- [ ] Pièces jointes libres sur une facture — reporté, prochaine passe
-- [ ] Aperçu PDF en direct pendant la saisie (avant finalisation)
-- [ ] Traduction de la facture (langue du client, differente de l'UI)
+- [ ] Signature électronique du client — ~~reporté~~ : une vraie capture de signature prendrait tout son sens sur le lien public désormais en place (voir ci-dessous), mais mérite sa propre passe plutôt qu'un ajout hâtif
+- [ ] Historique des modifications d'une facture (versions/diff) — reporté : demanderait de capturer un instantané a chaque mutation, sur toutes les routes qui touchent une facture (paiements, avoirs, échéancier...), trop invasif pour cette passe
+- [x] Pièces jointes libres sur une facture — upload/liste/suppression de fichiers (devis fournisseur, bon signé...), réutilise le mécanisme de stockage déjà en place pour le logo, nettoyage automatique a la suppression de la facture ou du commerce
+- [x] Aperçu PDF en direct pendant la saisie (avant finalisation) — nouvelle route `POST /invoices/preview-pdf` qui génère le PDF a partir de l'état courant du formulaire sans rien persister (pas de numéro attribué, filigrane "APERCU" systématique pour ne jamais le confondre avec le PDF officiel)
+- [ ] Traduction de la facture (langue du client, differente de l'UI) — ~~reporté~~ : même limite que l'internationalisation de l'UI, hors périmètre de cette passe
+- [x] Lien public partageable pour consulter/télécharger une facture — jeton généré a la demande (`shareToken`), route publique dédiée ne renvoyant jamais les notes internes ni aucune donnée non destinée au client, page de consultation dédiée avec téléchargement du PDF
+- [x] QR code — affiché dans la boîte de dialogue "Lien public" (pointant vers ce lien), généré côté client ; non intégré au PDF texte lui-même (le générateur PDF actuel n'a pas de support d'image, voir "Modèles visuels" ci-dessus)
+- [x] Filigrane sur le PDF selon le statut (BROUILLON / PAYÉE / ANNULÉE / EN RETARD) — texte diagonal semi-transparent intégré directement au générateur PDF existant (aucune facture "sent"/"partially_paid" n'a de filigrane, statut normal en cours)
+- [x] Duplication rapide d'une facture ou d'un devis en un clic — la duplication de facture existait déjà ; ajoutée pour les devis (bouton "Dupliquer" sur le détail du devis)
+- [x] Notes internes sur une facture — champ dédié distinct des notes client, encadré visuellement, jamais inclus dans le PDF ni le lien public
+- [ ] Export groupé de plusieurs factures en un seul PDF/ZIP — reporté : dépend d'une sélection multiple sur la liste des factures, qui n'existe pas encore (voir "Sélection multiple + actions groupées" dans UX transverse, elle-même différée) ; le faire maintenant dupliquerait ce travail a venir
 
 ### Paiements
 - [ ] Lien de paiement en ligne pour le client (Stripe/Mobile Money...) — ~~reporté~~ : nécessite de vraies clés/API d'un prestataire de paiement (Stripe, opérateur Mobile Money), hors périmètre du mock-server
@@ -68,6 +75,7 @@
 - [x] Remboursements (workflow de refund) — action "Rembourser" sur chaque paiement de l'historique, montant partiel ou total plafonné au solde remboursable, met à jour le statut du paiement (`refunded` si intégral) et recalcule le solde/statut de la facture
 - [ ] Rapprochement bancaire — ~~reporté~~ : un rapprochement fiable nécessite un vrai flux bancaire (import OFX/API bancaire) ; un simulateur CSV maison serait plus trompeur qu'utile sans données bancaires réelles
 - [x] Export comptable (format compatible logiciel de compta) — export CSV de tous les paiements (date, n° facture, référence, moyen, statut, montant, montant remboursé) depuis la page Paiements
+- [ ] Frais de retard automatiques (pénalité configurable au-delà de l'échéance) et escompte pour paiement anticipé
 
 ### Rapports
 - [ ] Générateur de rapport personnalisable (choisir ses propres métriques/dimensions) — ~~reporté~~ : un vrai constructeur de requêtes (métriques/dimensions arbitraires) est un module à part entière, disproportionné face aux rapports déjà riches existants
@@ -76,6 +84,7 @@
 - [x] Comparaison multi-période sur un meme graphique — case à cocher "Comparer à la période précédente" superposant une ligne en pointillés (période précédente de même durée) sur le graphique de CA
 - [x] Prévisions / projections de revenu — projection à 30 jours basée sur la moyenne quotidienne observée sur la période (affichée uniquement pour les périodes journalières : aujourd'hui/7j/30j, où l'extrapolation a un sens)
 - [x] Rapport dédié TVA collectée (aide déclaration fiscale) — ventilation base imposable/TVA collectée par taux, remise répartie au prorata comme dans le calcul de facture
+- [ ] Balance âgée / aging report des créances (0-30j, 30-60j, 60-90j, 90j+)
 
 ### Équipe
 - [ ] Rôles personnalisés (au-dela des 5 rôles fixes) — ~~reporté~~ : nécessiterait de remplacer l'enum de rôles fixe par une entité `Role` dynamique par commerce, en profondeur dans tout le système de permissions (frontend ET mock-server) déjà vérifié — trop invasif
@@ -93,6 +102,9 @@
 - [x] Clé API développeur / intégrations webhooks — génération/régénération de clé API + configuration URL/évènements webhook (scaffold de configuration ; aucun appel réel n'est émis, pas de vrai backend consommateur)
 - [x] Export/sauvegarde manuelle de toutes les données du commerce — export JSON complet (clients, produits, factures, devis, avoirs, paiements, équipe)
 - [x] Suppression du compte commerce (self-service) — réservé au propriétaire, confirmation par saisie exacte du nom du commerce, suppression en cascade de toutes les données rattachées
+- [ ] Politique de mot de passe configurable par le propriétaire (longueur minimale, complexité)
+- [ ] Journal des appels webhook (succès/échec/tentatives) — complète la configuration webhook existante
+- [ ] Signature HMAC des webhooks (secret partagé pour vérifier l'authenticité côté client)
 
 ### Abonnement SaaS (vue commerçant)
 - [x] Historique de facturation SaaS (mes factures/reçus d'abonnement Facture IA) — recus derives des cycles ecoules (pas de moteur de paiement recurrent reel), telechargement PDF par recu
@@ -115,6 +127,11 @@
 - [ ] Colonnes de tableau configurables (afficher/masquer) — reporté, prochaine passe
 - [x] Accessibilité avancée (contraste élevé, taille de police ajustable) — menu dédié dans la barre du haut (3 tailles de police, contraste élevé), préférences persistées par navigateur
 - [ ] Internationalisation (toute l'UI est en français code en dur) — ~~reporté~~ : nécessiterait d'extraire chaque chaîne française codée en dur dans la totalité des composants (100+ fichiers) vers un système i18n — refactor mécanique trop large pour cette passe
+- [ ] Annulation ("Undo") après suppression — toast avec bouton "Annuler" quelques secondes avant que la suppression soit effective
+- [ ] Corbeille / restauration d'éléments supprimés (clients, produits, factures) sous 30 jours, au lieu d'une suppression définitive immédiate
+- [ ] Aide raccourcis clavier (modal listant les raccourcis disponibles, notamment ceux de la palette de commandes)
+- [ ] Épinglage / favoris (clients ou factures fréquemment consultés)
+- [ ] Préférences de notification (choisir quels évènements déclenchent une notification dans la cloche)
 
 ---
 
@@ -126,6 +143,8 @@
 - [x] Filtres avancés (par plan, date d'inscription, chiffre d'affaires facturé) — filtres combinables, `revenueTotal`/`planId` ajoutés au résumé commerce côté backend
 - [x] Actions groupées (suspendre/exporter plusieurs commerces a la fois) — sélection multiple, suspendre/réactiver/exporter la sélection
 - [x] Mode "aperçu" : voir l'interface telle qu'un commerçant donné la voit, sans se connecter a sa place — ticket d'aperçu à usage unique (60s), échangé contre une vraie session commerçant dans un nouvel onglet, bannière persistante "Quitter l'aperçu" (testé de bout en bout : émission, échange, réutilisation du ticket rejetée)
+- [ ] Fonctionnalités activables par commerce (feature flags) — activer/désactiver une fonctionnalité pour un tenant donné
+- [ ] Historique des changements de plan par commerce (timeline upgrade/downgrade)
 
 ### Gestion des administrateurs
 - [x] Gestion des comptes admin eux-memes (inviter/désactiver d'autres admins) — réservé aux super-admins, auto-protection (un admin ne peut pas se modifier lui-même ici)
@@ -152,3 +171,4 @@
 - [x] Journal d'audit global (toutes actions, tous commerces confondus — actuellement uniquement consultable commerce par commerce) — page dédiée, paginée
 - [x] Configuration de parametres globaux (devises supportées, textes légaux, mentions par défaut) — stocké et éditable (réservé aux super-admins) ; **non branché** dans les flux commerçant existants (ex: le sélecteur de devise de `BusinessForm.vue` reste sa propre liste) pour ne pas retoucher un flux déjà vérifié — configuration de référence pour l'instant
 - [ ] Vue des erreurs applicatives remontées (si un outil de suivi d'erreurs existait) — reporté, nécessite un vrai outil de suivi d'erreurs (Sentry ou équivalent), explicitement hors périmètre de ce mock-server
+- [ ] Page de statut interne (uptime simulé, dernière erreur, latence moyenne — pas un vrai APM)

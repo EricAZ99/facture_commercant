@@ -47,11 +47,29 @@ export const API_ENDPOINTS = {
     stockAdjust: (id: string) => `/products/${id}/stock-adjust`,
     import: '/products/import'
   },
+  productCategories: {
+    base: '/product-categories',
+    byId: (id: string) => `/product-categories/${id}`
+  },
+  kits: {
+    base: '/product-kits',
+    byId: (id: string) => `/product-kits/${id}`
+  },
   invoices: {
     base: '/invoices',
     byId: (id: string) => `/invoices/${id}`,
     pdf: (id: string) => `/invoices/${id}/pdf`,
-    send: (id: string) => `/invoices/${id}/send`
+    send: (id: string) => `/invoices/${id}/send`,
+    remind: (id: string) => `/invoices/${id}/remind`,
+    previewPdf: '/invoices/preview-pdf',
+    shareLink: (id: string) => `/invoices/${id}/share-link`,
+    attachments: (id: string) => `/invoices/${id}/attachments`,
+    attachmentById: (id: string, attachmentId: string) =>
+      `/invoices/${id}/attachments/${attachmentId}`
+  },
+  publicInvoices: {
+    byToken: (token: string) => `/public/invoices/${token}`,
+    pdf: (token: string) => `/public/invoices/${token}/pdf`
   },
   quotes: {
     base: '/quotes',

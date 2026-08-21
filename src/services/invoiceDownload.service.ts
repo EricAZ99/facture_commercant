@@ -1,5 +1,5 @@
 import { API_ENDPOINTS } from '@/constants'
-import type { ID, Invoice } from '@/types'
+import type { ID, Invoice, PreviewInvoicePdfPayload } from '@/types'
 import { downloadBlob } from '@/utils/download'
 
 import { apiClient } from './api'
@@ -25,5 +25,17 @@ export const invoiceDownloadService = {
   async downloadPdf(invoice: Pick<Invoice, 'id' | 'number'>): Promise<void> {
     const blob = await this.fetchPdfBlob(invoice.id)
     downloadBlob(blob, `${invoice.number}.pdf`)
+  },
+
+  /**
+   * Apercu PDF en direct pendant la saisie : envoie l'etat courant du
+   * formulaire (rien n'est persiste cote backend) et recupere le PDF
+   * resultant, filigrane "APERCU".
+   */
+  async fetchPreviewPdfBlob(payload: PreviewInvoicePdfPayload): Promise<Blob> {
+    const { data } = await apiClient.post<Blob>(API_ENDPOINTS.invoices.previewPdf, payload, {
+      responseType: 'blob'
+    })
+    return data
   }
 }

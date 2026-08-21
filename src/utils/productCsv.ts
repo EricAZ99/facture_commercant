@@ -1,4 +1,4 @@
-import type { CreateProductPayload, Product, ProductType } from '@/types'
+import type { Product, ProductImportPayload, ProductType } from '@/types'
 
 import { parseCsv, toCsv } from './csv'
 
@@ -7,7 +7,7 @@ const CSV_HEADERS = ['Nom', 'Categorie', 'Type', 'Prix', 'TVA', 'SKU', 'Stock', 
 export function productsToCsv(products: Product[]): string {
   const rows = products.map((product) => [
     product.name,
-    product.category,
+    product.categoryPath ?? '',
     product.type,
     String(product.price),
     String(product.taxRate),
@@ -20,7 +20,7 @@ export function productsToCsv(products: Product[]): string {
 
 export interface ParsedProductRow {
   row: number
-  payload: CreateProductPayload
+  payload: ProductImportPayload
 }
 
 export interface ProductCsvParseResult {
@@ -28,7 +28,12 @@ export interface ProductCsvParseResult {
   errors: Array<{ row: number; message: string }>
 }
 
-/** Parse un CSV de produits (memes colonnes que l'export, entete optionnelle). */
+/**
+ * Parse un CSV de produits (memes colonnes que l'export, entete optionnelle).
+ * La colonne Categorie reste du texte libre (chemin eventuellement
+ * hierarchique, ex: "Vetements > T-shirts") : elle est resolue en
+ * `categoryId` cote backend (voir `findOrCreateCategoryPath`), pas ici.
+ */
 export function parseProductsCsv(text: string): ProductCsvParseResult {
   const rows = parseCsv(text)
   if (rows.length === 0) return { products: [], errors: [] }
@@ -41,9 +46,9 @@ export function parseProductsCsv(text: string): ProductCsvParseResult {
 
   dataRows.forEach((cells, index) => {
     const rowNumber = index + 1
-    const [name, category, typeRaw, priceRaw, taxRateRaw, sku, stockRaw, barcode] = cells
+    const [name, categoryPath, typeRaw, priceRaw, taxRateRaw, sku, stockRaw, barcode] = cells
 
-    if (!name?.trim() || !category?.trim()) {
+    if (!name?.trim() || !categoryPath?.trim()) {
       errors.push({ row: rowNumber, message: 'Nom et categorie sont requis.' })
       return
     }
@@ -61,7 +66,7 @@ export function parseProductsCsv(text: string): ProductCsvParseResult {
       row: rowNumber,
       payload: {
         name: name.trim(),
-        category: category.trim(),
+        categoryPath: categoryPath.trim(),
         type,
         price,
         taxRate: taxRateRaw?.trim() ? Number(taxRateRaw) : 0,

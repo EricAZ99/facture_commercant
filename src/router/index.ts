@@ -62,6 +62,19 @@ const routes: RouteRecordRaw[] = [
         meta: { permission: 'product:read' }
       },
       {
+        path: 'kits',
+        name: ROUTE_NAMES.kits,
+        component: () => import('@/pages/KitsPage.vue'),
+        meta: { permission: 'product:read' }
+      },
+      {
+        path: 'kits/:id',
+        name: ROUTE_NAMES.kitDetail,
+        component: () => import('@/pages/KitDetailPage.vue'),
+        props: true,
+        meta: { permission: 'product:read' }
+      },
+      {
         path: 'invoices',
         name: ROUTE_NAMES.invoices,
         component: () => import('@/pages/InvoicesPage.vue'),
@@ -248,6 +261,15 @@ const routes: RouteRecordRaw[] = [
     path: '/apercu/:ticket',
     name: ROUTE_NAMES.impersonate,
     component: () => import('@/pages/ImpersonatePage.vue'),
+    props: true
+  },
+  {
+    // Lien public de consultation d'une facture (voir `InvoiceShareDialog.vue`) :
+    // le visiteur est le client de la facture, jamais authentifie. Route
+    // publique independante de `requiresAuth`/`guestOnly`, comme `/apercu/:ticket`.
+    path: '/facture/:token',
+    name: ROUTE_NAMES.publicInvoice,
+    component: () => import('@/pages/PublicInvoicePage.vue'),
     props: true
   },
   {

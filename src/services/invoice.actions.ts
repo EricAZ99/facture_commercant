@@ -109,6 +109,29 @@ async function sendInvoiceByEmail(invoice: Invoice, currency: string): Promise<v
 }
 
 /**
+ * Construit un lien `mailto:` de rappel (ton different de l'envoi initial :
+ * insiste sur le solde restant et l'echeance depassee/proche).
+ */
+function buildReminderEmailShareUrl(invoice: Invoice, currency: string): string {
+  const balance = invoice.total - invoice.amountPaid
+  const subject = `Rappel — Facture ${invoice.number} en attente de paiement`
+  const body = [
+    `Nous n'avons pas encore recu le reglement de la facture ${invoice.number}.`,
+    `Solde restant du : ${formatCurrency(balance, currency)}`,
+    `Echeance : ${formatDate(invoice.dueDate)}`,
+    '',
+    'Merci de proceder au reglement des que possible.'
+  ].join('\n')
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
+/** Ouvre le client email avec un rappel pre-rempli, puis telecharge le PDF a joindre manuellement. */
+async function sendInvoiceReminderByEmail(invoice: Invoice, currency: string): Promise<void> {
+  window.location.href = buildReminderEmailShareUrl(invoice, currency)
+  await downloadInvoicePdf(invoice)
+}
+
+/**
  * Partage natif (Web Share API). Joint le PDF lui-meme quand la plateforme
  * le permet (mobile principalement) ; sinon partage un resume texte.
  * Retourne `false` si le partage natif n'est pas disponible sur cet
@@ -152,5 +175,7 @@ export const invoiceActions = {
   sendInvoiceByWhatsApp,
   buildEmailShareUrl,
   sendInvoiceByEmail,
+  buildReminderEmailShareUrl,
+  sendInvoiceReminderByEmail,
   shareInvoice
 }

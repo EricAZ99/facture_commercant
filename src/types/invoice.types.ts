@@ -18,6 +18,23 @@ export interface InvoiceItem {
   total: number
 }
 
+/** Champ personnalise libre (label/valeur) ajoute a une facture. */
+export interface InvoiceCustomField {
+  label: string
+  value: string
+}
+
+/** Piece jointe libre associee a une facture (devis fournisseur, bon signe...). */
+export interface InvoiceAttachment {
+  id: ID
+  invoiceId: ID
+  /** Nom de fichier original tel qu'envoye par l'utilisateur. */
+  filename: string
+  url: string
+  sizeBytes: number
+  createdAt: ISODateString
+}
+
 /** Facture emise par le commerce a destination d'un client. */
 export interface Invoice {
   id: ID
@@ -46,6 +63,18 @@ export interface Invoice {
   total: number
   amountPaid: number
   notes?: string
+  /** Visibles uniquement en interne (jamais sur le PDF ni le lien public). */
+  internalNotes?: string
+  /** Champs personnalises libres, affiches sur la facture (et le lien public), jamais sur le PDF texte. */
+  customFields?: InvoiceCustomField[]
+  /** Date/heure du dernier rappel manuel envoye au client, si applicable. */
+  lastReminderSentAt?: ISODateString
+  /**
+   * Jeton du lien public de consultation (genere a la demande, voir
+   * `invoiceService.getShareLink`). Absent tant qu'aucun lien n'a ete
+   * genere pour cette facture.
+   */
+  shareToken?: string
   createdAt: ISODateString
   updatedAt: ISODateString
 }
@@ -62,9 +91,14 @@ export interface CreateInvoicePayload {
   discountType: DiscountType
   discountValue: number
   notes?: string
+  internalNotes?: string
+  customFields?: InvoiceCustomField[]
   /** `draft` = brouillon (validation allegee) ; omis = facture finalisee ("sent"). */
   status?: Extract<InvoiceStatus, 'draft' | 'sent'>
 }
+
+/** Payload d'apercu PDF en direct (memes champs que la creation, mais rien n'est persiste). */
+export type PreviewInvoicePdfPayload = CreateInvoicePayload
 
 /**
  * Payload de mise a jour partielle d'une facture. `status` accepte tout
@@ -85,4 +119,30 @@ export interface InvoiceListParams extends ListQueryParams {
   /** Bornes inclusives sur `total`. */
   amountMin?: number
   amountMax?: number
+}
+
+/**
+ * Vue publique en lecture seule d'une facture (via le lien partageable) :
+ * volontairement un sous-ensemble de `Invoice`, sans `internalNotes` ni
+ * aucune donnee interne, avec quelques champs commerce ajoutes pour
+ * l'affichage (le visiteur n'est jamais authentifie).
+ */
+export interface PublicInvoiceView {
+  number: string
+  status: InvoiceStatus
+  issueDate: ISODateString
+  dueDate: ISODateString
+  items: InvoiceItem[]
+  subtotal: number
+  discountAmount: number
+  taxTotal: number
+  total: number
+  amountPaid: number
+  notes?: string
+  customFields?: InvoiceCustomField[]
+  businessName: string
+  businessEmail?: string
+  businessPhone?: string
+  currency: string
+  clientName?: string
 }

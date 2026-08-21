@@ -30,6 +30,13 @@ export function formatNumber(value: number, locale = 'fr-FR'): string {
   return new Intl.NumberFormat(locale).format(value)
 }
 
+/** Formate une taille de fichier en octets vers l'unite lisible la plus pertinente (Ko/Mo). */
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} o`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} Ko`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`
+}
+
 /** Formate une date en duree relative lisible (ex: "il y a 3 heures"). */
 export function formatRelativeTime(date: string | Date, locale = 'fr-FR'): string {
   const target = typeof date === 'string' ? new Date(date) : date

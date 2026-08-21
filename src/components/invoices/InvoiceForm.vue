@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AlertCircle, Plus } from 'lucide-vue-next'
+import { AlertCircle, Eye, Plus, Trash2 } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -181,6 +181,52 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           </div>
 
           <BaseTextarea v-model="builder.notes.value" label="Notes" :rows="2" />
+          <BaseTextarea
+            v-model="builder.internalNotes.value"
+            label="Notes internes"
+            hint="Visibles uniquement par votre equipe : jamais sur le PDF ni le lien public envoye au client."
+            :rows="2"
+          />
+
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-medium text-gray-700">Champs personnalises</label>
+              <button
+                type="button"
+                class="focus-ring inline-flex items-center gap-1 rounded-lg text-sm font-medium text-primary-600 hover:text-primary-700"
+                @click="builder.addCustomField()"
+              >
+                <Plus class="size-3.5" aria-hidden="true" />
+                Ajouter un champ
+              </button>
+            </div>
+            <div
+              v-for="(field, index) in builder.customFields.value"
+              :key="index"
+              class="flex items-center gap-2"
+            >
+              <input
+                v-model="field.label"
+                type="text"
+                placeholder="Libelle (ex: Reference commande)"
+                class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
+              />
+              <input
+                v-model="field.value"
+                type="text"
+                placeholder="Valeur"
+                class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
+              />
+              <button
+                type="button"
+                class="focus-ring shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                aria-label="Supprimer ce champ"
+                @click="builder.removeCustomField(index)"
+              >
+                <Trash2 class="size-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </BaseCard>
 
@@ -209,6 +255,16 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             @click="emit('cancel')"
           >
             Annuler
+          </BaseButton>
+          <BaseButton
+            type="button"
+            variant="outline"
+            :loading="builder.isPreviewingPdf.value"
+            :disabled="builder.isSubmitting.value"
+            @click="builder.previewPdf()"
+          >
+            <Eye v-if="!builder.isPreviewingPdf.value" class="size-4" aria-hidden="true" />
+            Apercu PDF
           </BaseButton>
           <BaseButton
             variant="outline"

@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { invoiceService, paymentService } from '@/services'
+import { invoiceDownloadService, invoiceService, paymentService } from '@/services'
 import type {
   ApiError,
   Client,
@@ -8,6 +8,7 @@ import type {
   DiscountType,
   ID,
   Invoice,
+  InvoiceCustomField,
   PaymentMethod,
   PriceBreak,
   Product
@@ -98,10 +99,15 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
   const issueDate = ref(options.invoice?.issueDate.slice(0, 10) ?? defaultIssueDate())
   const dueDate = ref(options.invoice?.dueDate.slice(0, 10) ?? defaultDueDate())
   const notes = ref(options.invoice?.notes ?? '')
+  const internalNotes = ref(options.invoice?.internalNotes ?? '')
+  const customFields = ref<InvoiceCustomField[]>(
+    options.invoice?.customFields ? options.invoice.customFields.map((f) => ({ ...f })) : []
+  )
 
   const submittingMode = ref<InvoiceSubmitMode | null>(null)
   const isSubmitting = computed(() => submittingMode.value !== null)
   const submitError = ref<ApiError | null>(null)
+  const isPreviewingPdf = ref(false)
 
   const totals = computed(() =>
     computeInvoiceTotals(lines.value, discountType.value, discountValue.value)
@@ -153,6 +159,14 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
     lines.value = lines.value.filter((item) => item.key !== key)
   }
 
+  function addCustomField(): void {
+    customFields.value.push({ label: '', value: '' })
+  }
+
+  function removeCustomField(index: number): void {
+    customFields.value.splice(index, 1)
+  }
+
   const hasValidLines = computed(
     () =>
       lines.value.length > 0 &&
@@ -171,6 +185,13 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
     return null
   }
 
+  /** Champs personnalises complets (label ET valeur non vides) uniquement. */
+  const validCustomFields = computed(() =>
+    customFields.value
+      .map((f) => ({ label: f.label.trim(), value: f.value.trim() }))
+      .filter((f) => f.label && f.value)
+  )
+
   function toPayload(mode: InvoiceSubmitMode): CreateInvoicePayload {
     return {
       clientId: client.value!.id,
@@ -186,7 +207,37 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
       discountType: discountType.value,
       discountValue: discountValue.value,
       notes: notes.value.trim() || undefined,
+      internalNotes: internalNotes.value.trim() || undefined,
+      customFields: validCustomFields.value.length > 0 ? validCustomFields.value : undefined,
       status: mode === 'draft' ? 'draft' : 'sent'
+    }
+  }
+
+  /**
+   * Genere un apercu PDF en direct de l'etat courant du formulaire (rien
+   * n'est persiste). Utilise `toPayload('draft')` pour reutiliser exactement
+   * la meme construction de payload que la sauvegarde reelle.
+   */
+  async function previewPdf(): Promise<void> {
+    if (!client.value) {
+      toast.error("Selectionnez un client avant de generer l'apercu.")
+      return
+    }
+    isPreviewingPdf.value = true
+    try {
+      const blob = await invoiceDownloadService.fetchPreviewPdfBlob(toPayload('draft'))
+      const url = URL.createObjectURL(blob)
+      const opened = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!opened) {
+        URL.revokeObjectURL(url)
+        toast.error("L'apercu n'a pas pu s'ouvrir (bloqueur de fenetres popup ?).")
+        return
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      isPreviewingPdf.value = false
     }
   }
 
@@ -249,10 +300,13 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
     issueDate,
     dueDate,
     notes,
+    internalNotes,
+    customFields,
     totals,
     isSubmitting,
     submittingMode,
     submitError,
+    isPreviewingPdf,
     canSaveDraft,
     canFinalize,
     setClient,
@@ -260,6 +314,9 @@ export function useInvoiceBuilder(options: UseInvoiceBuilderOptions = {}) {
     addProduct,
     updateLine,
     removeLine,
-    submit
+    addCustomField,
+    removeCustomField,
+    submit,
+    previewPdf
   }
 }

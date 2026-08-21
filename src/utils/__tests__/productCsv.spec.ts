@@ -8,7 +8,8 @@ function fakeProduct(overrides: Partial<Product> = {}): Product {
     id: 'p1',
     businessId: 'b1',
     name: 'T-shirt',
-    category: 'Vetements',
+    categoryId: 'cat1',
+    categoryPath: 'Vetements',
     type: 'product',
     price: 5000,
     taxRate: 18,
@@ -33,7 +34,7 @@ describe('parseProductsCsv', () => {
     expect(result.errors).toEqual([])
     expect(result.products[0]?.payload).toMatchObject({
       name: 'T-shirt',
-      category: 'Vetements',
+      categoryPath: 'Vetements',
       type: 'product',
       price: 5000
     })

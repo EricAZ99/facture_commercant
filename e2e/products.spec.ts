@@ -12,7 +12,7 @@ test('creation produit : un commercant peut creer un produit et le retrouver dan
 
   await page.getByRole('button', { name: 'Nouveau produit' }).click()
   await page.getByLabel(/^Nom\s*\*?$/).fill(name)
-  await page.getByLabel('Categorie').fill('Test E2E')
+  await page.getByLabel('Categorie').selectOption({ index: 1 })
   await page.getByLabel('Prix').fill('5000')
   await page.getByRole('button', { name: 'Creer le produit' }).click()
 

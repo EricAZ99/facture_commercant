@@ -7,6 +7,7 @@ import type {
   ListQueryParams,
   PaginatedResponse,
   Product,
+  ProductImportPayload,
   ProductImportResult,
   ProductStockMovement,
   UpdateProductPayload
@@ -14,9 +15,14 @@ import type {
 
 import { apiClient } from './api'
 
+/** Parametres de liste des produits, avec filtre optionnel par categorie (inclut ses sous-categories). */
+export interface ProductListParams extends ListQueryParams {
+  categoryId?: ID
+}
+
 /** Service de gestion du catalogue produits/services. */
 export const productService = {
-  async list(params?: ListQueryParams): Promise<PaginatedResponse<Product>> {
+  async list(params?: ProductListParams): Promise<PaginatedResponse<Product>> {
     const { data } = await apiClient.get<PaginatedResponse<Product>>(API_ENDPOINTS.products.base, {
       params
     })
@@ -80,7 +86,7 @@ export const productService = {
     return data.data
   },
 
-  async importMany(products: CreateProductPayload[]): Promise<ProductImportResult> {
+  async importMany(products: ProductImportPayload[]): Promise<ProductImportResult> {
     const { data } = await apiClient.post<ApiResponse<ProductImportResult>>(
       API_ENDPOINTS.products.import,
       { products }

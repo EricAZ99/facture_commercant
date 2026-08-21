@@ -3,8 +3,10 @@ import { useRoute, useRouter, type LocationQuery, type LocationQueryRaw } from '
 
 import { clientService, quoteService } from '@/services'
 import { useQuotesStore } from '@/stores'
-import type { ApiError, Client, Invoice, Quote, QuoteStatus } from '@/types'
+import type { ApiError, Client, CreateQuotePayload, Invoice, Quote, QuoteStatus } from '@/types'
 
+import { defaultIssueDate } from './useInvoiceBuilder'
+import { defaultExpiryDate } from './useQuoteBuilder'
 import { usePagination } from './usePagination'
 import { useToast } from './useToast'
 
@@ -33,6 +35,7 @@ export function useQuoteActions() {
 
   const isRemoving = ref(false)
   const isConverting = ref(false)
+  const isDuplicating = ref(false)
 
   async function removeQuote(quote: Quote): Promise<boolean> {
     isRemoving.value = true
@@ -63,7 +66,38 @@ export function useQuoteActions() {
     }
   }
 
-  return { isRemoving, isConverting, removeQuote, convertQuote }
+  /** Cree un nouveau devis brouillon a partir des lignes d'un devis existant. */
+  async function duplicateQuote(quote: Quote): Promise<Quote | null> {
+    isDuplicating.value = true
+    try {
+      const payload: CreateQuotePayload = {
+        clientId: quote.clientId,
+        issueDate: defaultIssueDate(),
+        expiryDate: defaultExpiryDate(),
+        items: quote.items.map(({ productId, description, quantity, unitPrice, taxRate }) => ({
+          productId,
+          description,
+          quantity,
+          unitPrice,
+          taxRate
+        })),
+        discountType: quote.discountType,
+        discountValue: quote.discountValue,
+        notes: quote.notes,
+        status: 'draft'
+      }
+      const created = await quoteService.create(payload)
+      toast.success(`Devis duplique sous ${created.number} (brouillon).`)
+      return created
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return null
+    } finally {
+      isDuplicating.value = false
+    }
+  }
+
+  return { isRemoving, isConverting, isDuplicating, removeQuote, convertQuote, duplicateQuote }
 }
 
 /**

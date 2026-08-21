@@ -49,13 +49,28 @@ const uploadLogo = multer({
   }
 })
 
+// Pieces jointes libres (factures) : n'importe quel type de fichier, taille
+// plus genereuse que le logo, meme mecanisme de stockage sur disque.
+const ATTACHMENT_MAX_SIZE_BYTES = 10 * 1024 * 1024
+
+const uploadAttachment = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => cb(null, `${crypto.randomUUID()}${path.extname(file.originalname)}`)
+  }),
+  limits: { fileSize: ATTACHMENT_MAX_SIZE_BYTES }
+})
+
 // --- "Base de donnees" en memoire ------------------------------------------
 
 const businesses = []
 const users = []
 const clients = []
 const products = []
+const productCategories = []
+const productKits = []
 const productStockMovements = []
+const invoiceAttachments = []
 const invoices = []
 const quotes = []
 const creditNotes = []
@@ -491,12 +506,54 @@ function seedSampleData_(businessId) {
     return client
   })
 
+  // Quelques categories de demonstration, dont une hierarchie a deux
+  // niveaux (Vetements > Hauts) pour illustrer l'arborescence.
+  const categoryVetements = {
+    id: crypto.randomUUID(),
+    businessId,
+    name: 'Vetements',
+    parentId: undefined,
+    createdAt: daysAgo(350).toISOString(),
+    updatedAt: now()
+  }
+  const categoryHauts = {
+    id: crypto.randomUUID(),
+    businessId,
+    name: 'Hauts',
+    parentId: categoryVetements.id,
+    createdAt: daysAgo(350).toISOString(),
+    updatedAt: now()
+  }
+  const categoryAccessoires = {
+    id: crypto.randomUUID(),
+    businessId,
+    name: 'Accessoires',
+    parentId: undefined,
+    createdAt: daysAgo(350).toISOString(),
+    updatedAt: now()
+  }
+  const categoryServices = {
+    id: crypto.randomUUID(),
+    businessId,
+    name: 'Services',
+    parentId: undefined,
+    createdAt: daysAgo(350).toISOString(),
+    updatedAt: now()
+  }
+  productCategories.push(categoryVetements, categoryHauts, categoryAccessoires, categoryServices)
+
   const productSpecs = [
-    { name: 'T-shirt coton', category: 'Vetements', type: 'product', price: 8000, stock: 42 },
-    { name: 'Robe wax', category: 'Vetements', type: 'product', price: 25000, stock: 15 },
-    { name: 'Sac a main', category: 'Accessoires', type: 'product', price: 18000, stock: 8 },
-    { name: 'Chaussures cuir', category: 'Accessoires', type: 'product', price: 32000, stock: 5 },
-    { name: 'Retouche vetement', category: 'Services', type: 'service', price: 6000 }
+    { name: 'T-shirt coton', categoryId: categoryHauts.id, type: 'product', price: 8000, stock: 42 },
+    { name: 'Robe wax', categoryId: categoryVetements.id, type: 'product', price: 25000, stock: 15 },
+    { name: 'Sac a main', categoryId: categoryAccessoires.id, type: 'product', price: 18000, stock: 8 },
+    {
+      name: 'Chaussures cuir',
+      categoryId: categoryAccessoires.id,
+      type: 'product',
+      price: 32000,
+      stock: 5
+    },
+    { name: 'Retouche vetement', categoryId: categoryServices.id, type: 'service', price: 6000 }
   ]
   const seededProducts = productSpecs.map((spec, index) => {
     const product = {
@@ -504,7 +561,7 @@ function seedSampleData_(businessId) {
       businessId,
       name: spec.name,
       description: undefined,
-      category: spec.category,
+      categoryId: spec.categoryId,
       type: spec.type,
       sku: spec.type === 'product' ? `SKU-${index + 1}` : undefined,
       price: spec.price,
@@ -522,6 +579,27 @@ function seedSampleData_(businessId) {
     )
     return product
   })
+
+  // Un kit de demonstration combinant deux produits deja crees ci-dessus.
+  const kitTshirt = seededProducts[0]
+  const kitSac = seededProducts[2]
+  if (kitTshirt && kitSac) {
+    productKits.push({
+      id: crypto.randomUUID(),
+      businessId,
+      name: 'Pack Tenue + Sac',
+      description: 'T-shirt coton et sac a main, vendus ensemble a prix reduit.',
+      sku: 'KIT-1',
+      items: [
+        { productId: kitTshirt.id, quantity: 1 },
+        { productId: kitSac.id, quantity: 1 }
+      ],
+      customPrice: 24000,
+      isActive: true,
+      createdAt: daysAgo(200).toISOString(),
+      updatedAt: now()
+    })
+  }
 
   const PAYMENT_METHODS = ['cash', 'card', 'bank_transfer', 'mobile_money']
 
@@ -1293,23 +1371,110 @@ app.post('/api/v1/clients/merge', requireAuth, (req, res) => {
 
 // --- Produits / services ----------------------------------------------
 
+// --- Categories de produits (arborescence) ---------------------------------
+
+function findCategory(businessId, id) {
+  return productCategories.find((c) => c.id === id && c.businessId === businessId)
+}
+
+/** Chemin lisible complet d'une categorie (ex: "Vetements > T-shirts"). */
+function categoryPathOf(category) {
+  if (!category) return undefined
+  const segments = [category.name]
+  let current = category
+  while (current.parentId) {
+    const parent = productCategories.find((c) => c.id === current.parentId)
+    if (!parent) break
+    segments.unshift(parent.name)
+    current = parent
+  }
+  return segments.join(' > ')
+}
+
+/** `id` lui-meme et tous ses descendants (utilise pour un filtre incluant les sous-categories). */
+function categoryAndDescendantIds(businessId, id) {
+  const result = [id]
+  const children = productCategories.filter((c) => c.businessId === businessId && c.parentId === id)
+  for (const child of children) {
+    result.push(...categoryAndDescendantIds(businessId, child.id))
+  }
+  return result
+}
+
+/** Vrai si `candidateId` est `ancestorId` lui-meme ou l'un de ses descendants. */
+function isCategoryOrDescendant(businessId, candidateId, ancestorId) {
+  let current = findCategory(businessId, candidateId)
+  while (current) {
+    if (current.id === ancestorId) return true
+    if (!current.parentId) return false
+    current = findCategory(businessId, current.parentId)
+  }
+  return false
+}
+
+/**
+ * Resout un chemin de categorie en texte libre (ex: "Vetements > T-shirts")
+ * en `categoryId`, creant chaque segment manquant de la chaine. Utilise
+ * uniquement par l'import CSV en masse, pour rester aussi simple qu'avant
+ * l'entite `ProductCategory` (pas de selection ligne par ligne).
+ */
+function findOrCreateCategoryPath(businessId, pathText) {
+  const segments = String(pathText || '')
+    .split('>')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (segments.length === 0) return undefined
+
+  let parentId = undefined
+  let category
+  for (const segment of segments) {
+    category = productCategories.find(
+      (c) =>
+        c.businessId === businessId &&
+        c.parentId === parentId &&
+        c.name.toLowerCase() === segment.toLowerCase()
+    )
+    if (!category) {
+      category = {
+        id: crypto.randomUUID(),
+        businessId,
+        name: segment,
+        parentId,
+        createdAt: now(),
+        updatedAt: now()
+      }
+      productCategories.push(category)
+    }
+    parentId = category.id
+  }
+  return category.id
+}
+
+function withCategoryPath(product) {
+  const category = findCategory(product.businessId, product.categoryId)
+  return { ...product, categoryPath: categoryPathOf(category) }
+}
+
 function matchesProductSearch(product, search) {
   if (!search) return true
   const needle = search.toLowerCase()
-  return [product.name, product.category, product.sku, product.barcode]
+  const categoryPath = categoryPathOf(findCategory(product.businessId, product.categoryId))
+  return [product.name, categoryPath, product.sku, product.barcode]
     .filter(Boolean)
     .some((value) => value.toLowerCase().includes(needle))
 }
 
-function validateProductPayload(payload, { partial }) {
+function validateProductPayload(payload, { partial, businessId }) {
   const errors = {}
   const has = (key) => Object.prototype.hasOwnProperty.call(payload, key)
 
   if ((!partial || has('name')) && !String(payload.name || '').trim()) {
     errors.name = ['Le nom est requis.']
   }
-  if ((!partial || has('category')) && !String(payload.category || '').trim()) {
-    errors.category = ['La categorie est requise.']
+  if ((!partial || has('categoryId')) && !String(payload.categoryId || '').trim()) {
+    errors.categoryId = ['La categorie est requise.']
+  } else if (payload.categoryId && !findCategory(businessId, payload.categoryId)) {
+    errors.categoryId = ['Categorie introuvable.']
   }
   if (has('type') && !['product', 'service'].includes(payload.type)) {
     errors.type = ['Le type doit etre "product" ou "service".']
@@ -1359,10 +1524,16 @@ function findProduct(req) {
 
 app.get('/api/v1/products', requireAuth, (req, res) => {
   const search = typeof req.query.search === 'string' ? req.query.search : ''
-  const businessProducts = products.filter(
+  let businessProducts = products.filter(
     (p) => p.businessId === req.currentBusiness.id && matchesProductSearch(p, search)
   )
-  respondPaginated(res, req, businessProducts, 'name')
+  if (req.query.categoryId) {
+    const allowedIds = new Set(
+      categoryAndDescendantIds(req.currentBusiness.id, String(req.query.categoryId))
+    )
+    businessProducts = businessProducts.filter((p) => allowedIds.has(p.categoryId))
+  }
+  respondPaginated(res, req, businessProducts.map(withCategoryPath), 'name')
 })
 
 app.get('/api/v1/products/:id', requireAuth, (req, res) => {
@@ -1371,12 +1542,12 @@ app.get('/api/v1/products/:id', requireAuth, (req, res) => {
     fail(res, 404, 'NOT_FOUND', 'Produit introuvable.')
     return
   }
-  ok(res, product)
+  ok(res, withCategoryPath(product))
 })
 
 app.post('/api/v1/products', requireAuth, (req, res) => {
   const payload = req.body || {}
-  const errors = validateProductPayload(payload, { partial: false })
+  const errors = validateProductPayload(payload, { partial: false, businessId: req.currentBusiness.id })
   if (Object.keys(errors).length > 0) {
     res
       .status(422)
@@ -1390,7 +1561,7 @@ app.post('/api/v1/products', requireAuth, (req, res) => {
     businessId: req.currentBusiness.id,
     name: String(payload.name).trim(),
     description: payload.description || undefined,
-    category: String(payload.category).trim(),
+    categoryId: payload.categoryId,
     type,
     price: Number(payload.price),
     taxRate: payload.taxRate !== undefined ? Number(payload.taxRate) : 0,
@@ -1413,7 +1584,7 @@ app.post('/api/v1/products', requireAuth, (req, res) => {
     `Nouveau produit ajoute : ${product.name}`,
     product.createdAt
   )
-  ok(res, product)
+  ok(res, withCategoryPath(product))
 })
 
 app.patch('/api/v1/products/:id', requireAuth, (req, res) => {
@@ -1424,7 +1595,7 @@ app.patch('/api/v1/products/:id', requireAuth, (req, res) => {
   }
 
   const payload = req.body || {}
-  const errors = validateProductPayload(payload, { partial: true })
+  const errors = validateProductPayload(payload, { partial: true, businessId: req.currentBusiness.id })
   if (Object.keys(errors).length > 0) {
     res
       .status(422)
@@ -1446,7 +1617,7 @@ app.patch('/api/v1/products/:id', requireAuth, (req, res) => {
   if ((next.type ?? product.type) === 'service') next.stock = undefined
 
   Object.assign(product, next, { updatedAt: now() })
-  ok(res, product)
+  ok(res, withCategoryPath(product))
 })
 
 app.delete('/api/v1/products/:id', requireAuth, (req, res) => {
@@ -1570,19 +1741,29 @@ app.post('/api/v1/products/import', requireAuth, (req, res) => {
   let createdCount = 0
 
   payloadProducts.forEach((payload, index) => {
-    const rowErrors = validateProductPayload(payload || {}, { partial: false })
+    // La categorie est saisie en texte libre dans le CSV (chemin eventuellement
+    // hierarchique) : on la resout en `categoryId` avant validation, creant
+    // chaque segment manquant de la chaine au passage.
+    const resolvedPayload = {
+      ...payload,
+      categoryId: findOrCreateCategoryPath(req.currentBusiness.id, payload?.categoryPath)
+    }
+    const rowErrors = validateProductPayload(resolvedPayload, {
+      partial: false,
+      businessId: req.currentBusiness.id
+    })
     if (Object.keys(rowErrors).length > 0) {
       errors.push({ row: index + 1, message: Object.values(rowErrors).flat().join(' ') })
       return
     }
 
-    const type = payload.type === 'service' ? 'service' : 'product'
+    const type = resolvedPayload.type === 'service' ? 'service' : 'product'
     products.push({
       id: crypto.randomUUID(),
       businessId: req.currentBusiness.id,
-      name: String(payload.name).trim(),
-      description: payload.description || undefined,
-      category: String(payload.category).trim(),
+      name: String(resolvedPayload.name).trim(),
+      description: resolvedPayload.description || undefined,
+      categoryId: resolvedPayload.categoryId,
       type,
       price: Number(payload.price),
       taxRate: payload.taxRate !== undefined ? Number(payload.taxRate) : 0,
@@ -1606,6 +1787,299 @@ app.post('/api/v1/products/import', requireAuth, (req, res) => {
   }
 
   ok(res, { createdCount, errors })
+})
+
+app.get('/api/v1/product-categories', requireAuth, (req, res) => {
+  const businessCategories = productCategories.filter((c) => c.businessId === req.currentBusiness.id)
+  ok(
+    res,
+    businessCategories.map((c) => ({ ...c, path: categoryPathOf(c) }))
+  )
+})
+
+app.post('/api/v1/product-categories', requireAuth, (req, res) => {
+  const payload = req.body || {}
+  const errors = {}
+  if (!String(payload.name || '').trim()) errors.name = ['Le nom est requis.']
+  if (payload.parentId && !findCategory(req.currentBusiness.id, payload.parentId)) {
+    errors.parentId = ['Categorie parente introuvable.']
+  }
+  if (Object.keys(errors).length > 0) {
+    res
+      .status(422)
+      .json({ success: false, code: 'VALIDATION_ERROR', message: 'Donnees invalides.', errors })
+    return
+  }
+
+  const category = {
+    id: crypto.randomUUID(),
+    businessId: req.currentBusiness.id,
+    name: String(payload.name).trim(),
+    parentId: payload.parentId || undefined,
+    createdAt: now(),
+    updatedAt: now()
+  }
+  productCategories.push(category)
+  ok(res, { ...category, path: categoryPathOf(category) })
+})
+
+app.patch('/api/v1/product-categories/:id', requireAuth, (req, res) => {
+  const category = findCategory(req.currentBusiness.id, req.params.id)
+  if (!category) {
+    fail(res, 404, 'NOT_FOUND', 'Categorie introuvable.')
+    return
+  }
+
+  const payload = req.body || {}
+  const errors = {}
+  if (Object.prototype.hasOwnProperty.call(payload, 'name') && !String(payload.name || '').trim()) {
+    errors.name = ['Le nom est requis.']
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'parentId') && payload.parentId) {
+    if (!findCategory(req.currentBusiness.id, payload.parentId)) {
+      errors.parentId = ['Categorie parente introuvable.']
+    } else if (isCategoryOrDescendant(req.currentBusiness.id, payload.parentId, category.id)) {
+      errors.parentId = ['Une categorie ne peut pas devenir sa propre descendante.']
+    }
+  }
+  if (Object.keys(errors).length > 0) {
+    res
+      .status(422)
+      .json({ success: false, code: 'VALIDATION_ERROR', message: 'Donnees invalides.', errors })
+    return
+  }
+
+  if (payload.name !== undefined) category.name = String(payload.name).trim()
+  if (Object.prototype.hasOwnProperty.call(payload, 'parentId')) {
+    category.parentId = payload.parentId || undefined
+  }
+  category.updatedAt = now()
+  ok(res, { ...category, path: categoryPathOf(category) })
+})
+
+app.delete('/api/v1/product-categories/:id', requireAuth, (req, res) => {
+  const index = productCategories.findIndex(
+    (c) => c.id === req.params.id && c.businessId === req.currentBusiness.id
+  )
+  if (index === -1) {
+    fail(res, 404, 'NOT_FOUND', 'Categorie introuvable.')
+    return
+  }
+  const category = productCategories[index]
+
+  const hasChildren = productCategories.some(
+    (c) => c.businessId === req.currentBusiness.id && c.parentId === category.id
+  )
+  if (hasChildren) {
+    fail(
+      res,
+      422,
+      'VALIDATION_ERROR',
+      'Cette categorie a des sous-categories : deplacez-les ou supprimez-les avant.'
+    )
+    return
+  }
+  const hasProducts = products.some(
+    (p) => p.businessId === req.currentBusiness.id && p.categoryId === category.id
+  )
+  if (hasProducts) {
+    fail(
+      res,
+      422,
+      'VALIDATION_ERROR',
+      'Cette categorie est utilisee par au moins un produit : reassignez-le avant de la supprimer.'
+    )
+    return
+  }
+
+  productCategories.splice(index, 1)
+  ok(res, null)
+})
+
+// --- Kits (produits groupes) -----------------------------------------------
+
+function findKit(req) {
+  return productKits.find((k) => k.id === req.params.id && k.businessId === req.currentBusiness.id)
+}
+
+/** Somme des prix des composants (prix unitaire produit x quantite), en ignorant les produits supprimes. */
+function computeKitComputedPrice(kit) {
+  return kit.items.reduce((sum, item) => {
+    const product = products.find((p) => p.id === item.productId)
+    return sum + (product ? product.price * item.quantity : 0)
+  }, 0)
+}
+
+/**
+ * Nombre de kits assemblables avec le stock actuel des composants (minimum
+ * de `stock composant / quantite requise`, arrondi a l'entier inferieur).
+ * `null` si aucun composant n'a de stock suivi (ex: kit 100% services).
+ */
+function computeKitAvailableStock(kit) {
+  let min = null
+  for (const item of kit.items) {
+    const product = products.find((p) => p.id === item.productId)
+    if (!product || product.stock === undefined) continue
+    const possible = Math.floor(product.stock / item.quantity)
+    min = min === null ? possible : Math.min(min, possible)
+  }
+  return min
+}
+
+function withKitDetails(kit) {
+  const items = kit.items.map((item) => {
+    const product = products.find((p) => p.id === item.productId)
+    return {
+      productId: item.productId,
+      quantity: item.quantity,
+      productName: product ? product.name : '(produit supprime)',
+      unitPrice: product ? product.price : 0,
+      taxRate: product ? product.taxRate : 0
+    }
+  })
+  const computedPrice = computeKitComputedPrice(kit)
+  return {
+    ...kit,
+    items,
+    computedPrice,
+    effectivePrice: kit.customPrice !== undefined ? kit.customPrice : computedPrice,
+    availableStock: computeKitAvailableStock(kit)
+  }
+}
+
+function matchesKitSearch(kit, search) {
+  if (!search) return true
+  const needle = search.toLowerCase()
+  return [kit.name, kit.sku, kit.description]
+    .filter(Boolean)
+    .some((value) => value.toLowerCase().includes(needle))
+}
+
+function validateKitPayload(payload, { partial, businessId }) {
+  const errors = {}
+  const has = (key) => Object.prototype.hasOwnProperty.call(payload, key)
+
+  if ((!partial || has('name')) && !String(payload.name || '').trim()) {
+    errors.name = ['Le nom est requis.']
+  }
+  if (!partial || has('items')) {
+    if (!Array.isArray(payload.items) || payload.items.length === 0) {
+      errors.items = ['Le kit doit contenir au moins un produit.']
+    } else {
+      const invalid = payload.items.some((item) => {
+        const product = products.find((p) => p.id === item?.productId && p.businessId === businessId)
+        return !product || !(Number(item.quantity) > 0)
+      })
+      if (invalid) {
+        errors.items = ['Chaque ligne doit referencer un produit existant avec une quantite positive.']
+      }
+    }
+  }
+  if (has('customPrice') && payload.customPrice !== undefined && payload.customPrice !== null) {
+    const price = Number(payload.customPrice)
+    if (!Number.isFinite(price) || price < 0) {
+      errors.customPrice = ['Le prix doit etre un nombre positif ou nul.']
+    }
+  }
+  return errors
+}
+
+app.get('/api/v1/product-kits', requireAuth, (req, res) => {
+  const search = typeof req.query.search === 'string' ? req.query.search : ''
+  const businessKits = productKits.filter(
+    (k) => k.businessId === req.currentBusiness.id && matchesKitSearch(k, search)
+  )
+  respondPaginated(res, req, businessKits.map(withKitDetails), 'name')
+})
+
+app.get('/api/v1/product-kits/:id', requireAuth, (req, res) => {
+  const kit = findKit(req)
+  if (!kit) {
+    fail(res, 404, 'NOT_FOUND', 'Kit introuvable.')
+    return
+  }
+  ok(res, withKitDetails(kit))
+})
+
+app.post('/api/v1/product-kits', requireAuth, (req, res) => {
+  const payload = req.body || {}
+  const errors = validateKitPayload(payload, { partial: false, businessId: req.currentBusiness.id })
+  if (Object.keys(errors).length > 0) {
+    res
+      .status(422)
+      .json({ success: false, code: 'VALIDATION_ERROR', message: 'Donnees invalides.', errors })
+    return
+  }
+
+  const kit = {
+    id: crypto.randomUUID(),
+    businessId: req.currentBusiness.id,
+    name: String(payload.name).trim(),
+    description: payload.description || undefined,
+    sku: payload.sku || undefined,
+    items: payload.items.map((item) => ({
+      productId: item.productId,
+      quantity: Number(item.quantity)
+    })),
+    customPrice:
+      payload.customPrice !== undefined && payload.customPrice !== null
+        ? Number(payload.customPrice)
+        : undefined,
+    isActive: payload.isActive !== false,
+    createdAt: now(),
+    updatedAt: now()
+  }
+  productKits.push(kit)
+  logActivity(req.currentBusiness.id, 'kit_created', `Nouveau kit cree : ${kit.name}`, kit.createdAt)
+  ok(res, withKitDetails(kit))
+})
+
+app.patch('/api/v1/product-kits/:id', requireAuth, (req, res) => {
+  const kit = findKit(req)
+  if (!kit) {
+    fail(res, 404, 'NOT_FOUND', 'Kit introuvable.')
+    return
+  }
+
+  const payload = req.body || {}
+  const errors = validateKitPayload(payload, { partial: true, businessId: req.currentBusiness.id })
+  if (Object.keys(errors).length > 0) {
+    res
+      .status(422)
+      .json({ success: false, code: 'VALIDATION_ERROR', message: 'Donnees invalides.', errors })
+    return
+  }
+
+  if (payload.name !== undefined) kit.name = String(payload.name).trim()
+  if (payload.description !== undefined) kit.description = payload.description || undefined
+  if (payload.sku !== undefined) kit.sku = payload.sku || undefined
+  if (Array.isArray(payload.items)) {
+    kit.items = payload.items.map((item) => ({
+      productId: item.productId,
+      quantity: Number(item.quantity)
+    }))
+  }
+  if (Object.prototype.hasOwnProperty.call(payload, 'customPrice')) {
+    kit.customPrice =
+      payload.customPrice !== undefined && payload.customPrice !== null
+        ? Number(payload.customPrice)
+        : undefined
+  }
+  if (payload.isActive !== undefined) kit.isActive = Boolean(payload.isActive)
+  kit.updatedAt = now()
+  ok(res, withKitDetails(kit))
+})
+
+app.delete('/api/v1/product-kits/:id', requireAuth, (req, res) => {
+  const index = productKits.findIndex(
+    (k) => k.id === req.params.id && k.businessId === req.currentBusiness.id
+  )
+  if (index === -1) {
+    fail(res, 404, 'NOT_FOUND', 'Kit introuvable.')
+    return
+  }
+  productKits.splice(index, 1)
+  ok(res, null)
 })
 
 // --- Factures ---------------------------------------------------------
@@ -1634,6 +2108,15 @@ function computeInvoiceTotals(items, discountType, discountValue) {
   const total = round(taxableAmount + taxTotal)
 
   return { discountAmount, subtotal, taxTotal, total }
+}
+
+/** Ne garde que les champs personnalises complets (label ET valeur non vides). */
+function sanitizeCustomFields(value) {
+  if (!Array.isArray(value)) return undefined
+  const fields = value
+    .map((f) => ({ label: String(f?.label || '').trim(), value: String(f?.value || '').trim() }))
+    .filter((f) => f.label && f.value)
+  return fields.length > 0 ? fields : undefined
 }
 
 function validateInvoicePayload(payload) {
@@ -1679,7 +2162,15 @@ function withClientName(invoice) {
 }
 
 /** Genere un PDF minimal (texte simple) representant la facture, sans dependance externe. */
-function buildInvoicePdfBuffer(lines) {
+/**
+ * Genere un PDF minimal (texte simple) representant la facture, sans
+ * dependance externe. `options.watermark` ajoute un filigrane diagonal
+ * semi-transparent (ex: "BROUILLON", "EN RETARD") via un objet ExtGState
+ * supplementaire \u2014 le nombre d'objets PDF (et donc la table xref) est
+ * calcule dynamiquement pour rester valide avec ou sans filigrane.
+ */
+function buildInvoicePdfBuffer(lines, options = {}) {
+  const { watermark } = options
   const encode = (s) => Buffer.from(s, 'latin1')
   const sanitize = (s) =>
     String(s)
@@ -1694,14 +2185,31 @@ function buildInvoicePdfBuffer(lines) {
     y -= index === 0 ? 28 : 18
     return part
   })
+
+  if (watermark) {
+    // Texte gris clair (via ExtGState /GS1, opacite 15%), rotate ~45deg,
+    // grande taille, positionne pour traverser la page en diagonale.
+    streamParts.push(
+      `q /GS1 gs 0.55 0.55 0.55 rg 0.7071 0.7071 -0.7071 0.7071 90 260 cm BT /F1 64 Tf 0 0 Td (${sanitize(watermark)}) Tj ET Q`
+    )
+  }
+
   const streamBuf = encode(streamParts.join('\n'))
+
+  const resources = watermark
+    ? '/Resources << /Font << /F1 4 0 R >> /ExtGState << /GS1 5 0 R >> >>'
+    : '/Resources << /Font << /F1 4 0 R >> >>'
+  const contentObjNum = watermark ? 6 : 5
 
   const objs = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 4 0 R >> >> /MediaBox [0 0 612 792] /Contents 5 0 R >>',
+    `<< /Type /Page /Parent 2 0 R ${resources} /MediaBox [0 0 612 792] /Contents ${contentObjNum} 0 R >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'
   ]
+  if (watermark) {
+    objs.push('<< /Type /ExtGState /ca 0.15 >>')
+  }
 
   const chunks = [encode('%PDF-1.4\n')]
   const offsets = []
@@ -1715,20 +2223,61 @@ function buildInvoicePdfBuffer(lines) {
   }
 
   offsets.push(pos)
-  const streamHeader = encode(`5 0 obj\n<< /Length ${streamBuf.length} >>\nstream\n`)
+  const streamHeader = encode(`${contentObjNum} 0 obj\n<< /Length ${streamBuf.length} >>\nstream\n`)
   const streamFooter = encode('\nendstream\nendobj\n')
   chunks.push(streamHeader, streamBuf, streamFooter)
   pos += streamHeader.length + streamBuf.length + streamFooter.length
 
+  const totalObjs = objs.length + 1
   const xrefOffset = pos
-  let xref = 'xref\n0 6\n0000000000 65535 f \n'
-  for (let i = 0; i < 5; i++) {
+  let xref = `xref\n0 ${totalObjs + 1}\n0000000000 65535 f \n`
+  for (let i = 0; i < totalObjs; i++) {
     xref += `${String(offsets[i]).padStart(10, '0')} 00000 n \n`
   }
-  xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
+  xref += `trailer\n<< /Size ${totalObjs + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`
   chunks.push(encode(xref))
 
   return Buffer.concat(chunks)
+}
+
+/** Texte du filigrane selon le statut de la facture ; `undefined` = aucun filigrane. */
+function invoiceStatusWatermark(status) {
+  switch (status) {
+    case 'draft':
+      return 'BROUILLON'
+    case 'overdue':
+      return 'EN RETARD'
+    case 'cancelled':
+      return 'ANNULEE'
+    case 'paid':
+      return 'PAYEE'
+    default:
+      return undefined
+  }
+}
+
+/** Construit les lignes texte + filigrane du PDF d'une facture reelle (persistee). */
+function renderInvoicePdfBuffer(invoice, business, client) {
+  const currency = business.currency || ''
+  const lines = [
+    `Facture ${invoice.number}`,
+    business.name,
+    `Client: ${client ? `${client.firstName} ${client.lastName}` : 'N/A'}`,
+    `Date d'emission: ${invoice.issueDate.slice(0, 10)}`,
+    `Date d'echeance: ${invoice.dueDate.slice(0, 10)}`,
+    '',
+    ...invoice.items.map(
+      (item) =>
+        `${item.description}  x${item.quantity}  ${item.unitPrice} ${currency} = ${item.total} ${currency}`
+    ),
+    '',
+    `Sous-total: ${invoice.subtotal} ${currency}`,
+    `Remise: ${invoice.discountAmount} ${currency}`,
+    `TVA: ${invoice.taxTotal} ${currency}`,
+    `Total: ${invoice.total} ${currency}`,
+    `Paye: ${invoice.amountPaid} ${currency}`
+  ]
+  return buildInvoicePdfBuffer(lines, { watermark: invoiceStatusWatermark(invoice.status) })
 }
 
 app.get('/api/v1/invoices', requireAuth, (req, res) => {
@@ -1784,32 +2333,79 @@ app.get('/api/v1/invoices/:id/pdf', requireAuth, (req, res) => {
     return
   }
   const client = clients.find((c) => c.id === invoice.clientId)
+  const pdfBuffer = renderInvoicePdfBuffer(invoice, req.currentBusiness, client)
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="${invoice.number}.pdf"`)
+  res.send(pdfBuffer)
+})
+
+/**
+ * Apercu PDF en direct pendant la saisie : memes champs qu'une creation,
+ * mais rien n'est persiste (pas de numero attribue, pas de journal
+ * d'activite). Filigrane "APERCU" systematique pour ne jamais etre confondu
+ * avec le PDF officiel d'une facture reellement enregistree.
+ */
+app.post('/api/v1/invoices/preview-pdf', requireAuth, (req, res) => {
+  const payload = req.body || {}
+  const client = clients.find(
+    (c) => c.id === payload.clientId && c.businessId === req.currentBusiness.id
+  )
   const business = req.currentBusiness
   const currency = business.currency || ''
 
+  const items = (Array.isArray(payload.items) ? payload.items : []).map((item) => {
+    const quantity = Number(item.quantity) || 0
+    const unitPrice = Number(item.unitPrice) || 0
+    return {
+      description: String(item.description || '').trim() || 'Article',
+      quantity,
+      unitPrice,
+      taxRate: Number(item.taxRate) || 0,
+      total: Math.round(quantity * unitPrice * 100) / 100
+    }
+  })
+  const discountType = payload.discountType === 'fixed' ? 'fixed' : 'percentage'
+  const discountValue = Number(payload.discountValue) || 0
+  const totals = computeInvoiceTotals(items, discountType, discountValue)
+
   const lines = [
-    `Facture ${invoice.number}`,
+    'Facture (apercu)',
     business.name,
     `Client: ${client ? `${client.firstName} ${client.lastName}` : 'N/A'}`,
-    `Date d'emission: ${invoice.issueDate.slice(0, 10)}`,
-    `Date d'echeance: ${invoice.dueDate.slice(0, 10)}`,
+    `Date d'emission: ${String(payload.issueDate || '').slice(0, 10) || '-'}`,
+    `Date d'echeance: ${String(payload.dueDate || '').slice(0, 10) || '-'}`,
     '',
-    ...invoice.items.map(
+    ...items.map(
       (item) =>
         `${item.description}  x${item.quantity}  ${item.unitPrice} ${currency} = ${item.total} ${currency}`
     ),
     '',
-    `Sous-total: ${invoice.subtotal} ${currency}`,
-    `Remise: ${invoice.discountAmount} ${currency}`,
-    `TVA: ${invoice.taxTotal} ${currency}`,
-    `Total: ${invoice.total} ${currency}`,
-    `Paye: ${invoice.amountPaid} ${currency}`
+    `Sous-total: ${totals.subtotal} ${currency}`,
+    `Remise: ${totals.discountAmount} ${currency}`,
+    `TVA: ${totals.taxTotal} ${currency}`,
+    `Total: ${totals.total} ${currency}`
   ]
 
-  const pdfBuffer = buildInvoicePdfBuffer(lines)
+  const pdfBuffer = buildInvoicePdfBuffer(lines, { watermark: 'APERCU' })
   res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `attachment; filename="${invoice.number}.pdf"`)
+  res.setHeader('Content-Disposition', 'inline; filename="apercu.pdf"')
   res.send(pdfBuffer)
+})
+
+/** Genere (si besoin) et renvoie le jeton du lien public de consultation de cette facture. */
+app.post('/api/v1/invoices/:id/share-link', requireAuth, (req, res) => {
+  const invoice = invoices.find(
+    (i) => i.id === req.params.id && i.businessId === req.currentBusiness.id
+  )
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
+    return
+  }
+  if (!invoice.shareToken) {
+    invoice.shareToken = crypto.randomUUID()
+    invoice.updatedAt = now()
+  }
+  ok(res, { shareToken: invoice.shareToken })
 })
 
 app.post('/api/v1/invoices', requireAuth, (req, res) => {
@@ -1888,6 +2484,8 @@ app.post('/api/v1/invoices', requireAuth, (req, res) => {
     total: totals.total,
     amountPaid: 0,
     notes: payload.notes || undefined,
+    internalNotes: payload.internalNotes || undefined,
+    customFields: sanitizeCustomFields(payload.customFields),
     createdAt: now(),
     updatedAt: now()
   }
@@ -2004,6 +2602,8 @@ app.patch('/api/v1/invoices/:id', requireAuth, (req, res) => {
   if (payload.issueDate) invoice.issueDate = payload.issueDate
   if (payload.dueDate) invoice.dueDate = payload.dueDate
   if (payload.notes !== undefined) invoice.notes = payload.notes || undefined
+  if (payload.internalNotes !== undefined) invoice.internalNotes = payload.internalNotes || undefined
+  if (payload.customFields !== undefined) invoice.customFields = sanitizeCustomFields(payload.customFields)
   if (payload.status) invoice.status = payload.status
 
   invoice.updatedAt = now()
@@ -2018,8 +2618,179 @@ app.delete('/api/v1/invoices/:id', requireAuth, (req, res) => {
     fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
     return
   }
-  invoices.splice(index, 1)
+  const [deleted] = invoices.splice(index, 1)
+  for (let i = invoiceAttachments.length - 1; i >= 0; i--) {
+    if (invoiceAttachments[i].invoiceId === deleted.id) {
+      const filename = invoiceAttachments[i].url.split('/uploads/')[1]
+      if (filename) fs.unlink(path.join(UPLOADS_DIR, filename), () => {})
+      invoiceAttachments.splice(i, 1)
+    }
+  }
   ok(res, null)
+})
+
+app.post('/api/v1/invoices/:id/remind', requireAuth, (req, res) => {
+  const invoice = invoices.find(
+    (i) => i.id === req.params.id && i.businessId === req.currentBusiness.id
+  )
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
+    return
+  }
+  if (!['sent', 'partially_paid', 'overdue'].includes(invoice.status)) {
+    res.status(422).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Un rappel ne peut etre envoye que pour une facture envoyee, partiellement payee ou en retard.',
+      errors: {}
+    })
+    return
+  }
+  if (invoice.total - invoice.amountPaid <= 0) {
+    res.status(422).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Cette facture ne presente aucun solde restant.',
+      errors: {}
+    })
+    return
+  }
+
+  invoice.lastReminderSentAt = now()
+  invoice.updatedAt = invoice.lastReminderSentAt
+
+  const client = clients.find((c) => c.id === invoice.clientId)
+  logActivity(
+    req.currentBusiness.id,
+    'invoice_reminder_sent',
+    `Rappel envoye pour la facture ${invoice.number}${client ? ` a ${client.firstName} ${client.lastName}` : ''}`,
+    invoice.lastReminderSentAt
+  )
+
+  ok(res, withClientName(invoice))
+})
+
+// --- Pieces jointes libres --------------------------------------------
+
+app.get('/api/v1/invoices/:id/attachments', requireAuth, (req, res) => {
+  const invoice = invoices.find(
+    (i) => i.id === req.params.id && i.businessId === req.currentBusiness.id
+  )
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
+    return
+  }
+  const attachments = invoiceAttachments
+    .filter((a) => a.invoiceId === invoice.id)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  ok(res, attachments)
+})
+
+app.post('/api/v1/invoices/:id/attachments', requireAuth, (req, res) => {
+  const invoice = invoices.find(
+    (i) => i.id === req.params.id && i.businessId === req.currentBusiness.id
+  )
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
+    return
+  }
+
+  uploadAttachment.single('file')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        fail(res, 422, 'FILE_TOO_LARGE', 'Le fichier ne doit pas depasser 10 Mo.')
+        return
+      }
+      fail(res, 422, 'UPLOAD_ERROR', "Le televersement du fichier a echoue.")
+      return
+    }
+    if (!req.file) {
+      fail(res, 422, 'VALIDATION_ERROR', 'Aucun fichier recu.')
+      return
+    }
+
+    const attachment = {
+      id: crypto.randomUUID(),
+      invoiceId: invoice.id,
+      filename: req.file.originalname,
+      url: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`,
+      sizeBytes: req.file.size,
+      createdAt: now()
+    }
+    invoiceAttachments.push(attachment)
+    ok(res, attachment)
+  })
+})
+
+app.delete('/api/v1/invoices/:id/attachments/:attachmentId', requireAuth, (req, res) => {
+  const invoice = invoices.find(
+    (i) => i.id === req.params.id && i.businessId === req.currentBusiness.id
+  )
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Facture introuvable.')
+    return
+  }
+  const index = invoiceAttachments.findIndex(
+    (a) => a.id === req.params.attachmentId && a.invoiceId === invoice.id
+  )
+  if (index === -1) {
+    fail(res, 404, 'NOT_FOUND', 'Piece jointe introuvable.')
+    return
+  }
+  const [attachment] = invoiceAttachments.splice(index, 1)
+  const filename = attachment.url.split('/uploads/')[1]
+  if (filename) fs.unlink(path.join(UPLOADS_DIR, filename), () => {})
+  ok(res, null)
+})
+
+// --- Lien public de consultation ---------------------------------------
+//
+// Accessible SANS authentification (visiteur = le client de la facture).
+// Ne renvoie jamais `internalNotes` ni aucune donnee autre que ce qui est
+// deja destine au client sur la facture elle-meme.
+
+app.get('/api/v1/public/invoices/:token', (req, res) => {
+  const invoice = invoices.find((i) => i.shareToken === req.params.token)
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Lien invalide ou expire.')
+    return
+  }
+  const business = businesses.find((b) => b.id === invoice.businessId)
+  const client = clients.find((c) => c.id === invoice.clientId)
+
+  ok(res, {
+    number: invoice.number,
+    status: invoice.status,
+    issueDate: invoice.issueDate,
+    dueDate: invoice.dueDate,
+    items: invoice.items,
+    subtotal: invoice.subtotal,
+    discountAmount: invoice.discountAmount,
+    taxTotal: invoice.taxTotal,
+    total: invoice.total,
+    amountPaid: invoice.amountPaid,
+    notes: invoice.notes,
+    customFields: invoice.customFields,
+    businessName: business ? business.name : '',
+    businessEmail: business ? business.email : undefined,
+    businessPhone: business ? business.phone : undefined,
+    currency: business ? business.currency : '',
+    clientName: client ? `${client.firstName} ${client.lastName}` : undefined
+  })
+})
+
+app.get('/api/v1/public/invoices/:token/pdf', (req, res) => {
+  const invoice = invoices.find((i) => i.shareToken === req.params.token)
+  if (!invoice) {
+    fail(res, 404, 'NOT_FOUND', 'Lien invalide ou expire.')
+    return
+  }
+  const business = businesses.find((b) => b.id === invoice.businessId)
+  const client = clients.find((c) => c.id === invoice.clientId)
+  const pdfBuffer = renderInvoicePdfBuffer(invoice, business, client)
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="${invoice.number}.pdf"`)
+  res.send(pdfBuffer)
 })
 
 // --- Devis ----------------------------------------------------------------
@@ -3802,7 +4573,10 @@ function deleteBusinessCascade(businessId) {
 
   removeAll(clients, (c) => c.businessId === businessId)
   removeAll(products, (p) => p.businessId === businessId)
+  removeAll(productCategories, (c) => c.businessId === businessId)
+  removeAll(productKits, (k) => k.businessId === businessId)
   removeAll(productStockMovements, (m) => m.businessId === businessId)
+  removeAll(invoiceAttachments, (a) => invoices.some((i) => i.id === a.invoiceId && i.businessId === businessId))
   removeAll(invoices, (i) => i.businessId === businessId)
   removeAll(quotes, (q) => q.businessId === businessId)
   removeAll(creditNotes, (cn) => cn.businessId === businessId)

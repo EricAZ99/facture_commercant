@@ -1,9 +1,17 @@
 import { reactive, ref, watch } from 'vue'
 import { useRoute, useRouter, type LocationQuery, type LocationQueryRaw } from 'vue-router'
 
-import { clientService, invoiceActions } from '@/services'
+import { clientService, invoiceActions, invoiceService } from '@/services'
 import { useAuthStore, useInvoicesStore } from '@/stores'
-import type { ApiError, Client, CreateInvoicePayload, Invoice, InvoiceStatus } from '@/types'
+import type {
+  ApiError,
+  Client,
+  CreateInvoicePayload,
+  ID,
+  Invoice,
+  InvoiceAttachment,
+  InvoiceStatus
+} from '@/types'
 
 import { defaultDueDate, defaultIssueDate } from './useInvoiceBuilder'
 import { usePagination } from './usePagination'
@@ -62,6 +70,7 @@ export function useInvoiceActions() {
   const isSharing = ref(false)
   const isSendingEmail = ref(false)
   const isSendingWhatsApp = ref(false)
+  const isSendingReminder = ref(false)
 
   function currency(): string {
     return authStore.business?.currency ?? 'XOF'
@@ -189,6 +198,27 @@ export function useInvoiceActions() {
     }
   }
 
+  /**
+   * Envoie un rappel ponctuel au client (mailto pre-rempli + PDF a joindre,
+   * meme mecanisme que `sendInvoiceByEmail`) et enregistre l'envoi cote
+   * backend (`lastReminderSentAt`) pour tracabilite. Distinct de la relance
+   * automatique programmee (differee, necessite un ordonnanceur reel).
+   */
+  async function sendReminder(invoice: Invoice): Promise<Invoice | null> {
+    isSendingReminder.value = true
+    try {
+      await invoiceActions.sendInvoiceReminderByEmail(invoice, currency())
+      const updated = await invoiceService.sendReminder(invoice.id)
+      toast.success('Rappel envoye et enregistre.')
+      return updated
+    } catch (err) {
+      toast.error(documentErrorMessage(err))
+      return null
+    } finally {
+      isSendingReminder.value = false
+    }
+  }
+
   return {
     isCancelling,
     isDuplicating,
@@ -198,6 +228,7 @@ export function useInvoiceActions() {
     isSharing,
     isSendingEmail,
     isSendingWhatsApp,
+    isSendingReminder,
     cancelInvoice,
     duplicateInvoice,
     downloadInvoice,
@@ -205,7 +236,8 @@ export function useInvoiceActions() {
     printInvoice,
     shareInvoice,
     sendInvoiceByEmail,
-    sendInvoiceByWhatsApp
+    sendInvoiceByWhatsApp,
+    sendReminder
   }
 }
 
@@ -380,4 +412,55 @@ export function useInvoices() {
     resetFilters,
     ...actions
   }
+}
+
+/** Orchestre les pieces jointes libres d'une facture donnee (upload/liste/suppression). */
+export function useInvoiceAttachments(invoiceId: ID) {
+  const toast = useToast()
+
+  const attachments = ref<InvoiceAttachment[]>([])
+  const isLoading = ref(false)
+  const isUploading = ref(false)
+  const removingId = ref<ID | null>(null)
+
+  async function load(): Promise<void> {
+    isLoading.value = true
+    try {
+      attachments.value = await invoiceService.listAttachments(invoiceId)
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function upload(file: File): Promise<boolean> {
+    isUploading.value = true
+    try {
+      const attachment = await invoiceService.uploadAttachment(invoiceId, file)
+      attachments.value = [attachment, ...attachments.value]
+      toast.success('Piece jointe ajoutee.')
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isUploading.value = false
+    }
+  }
+
+  async function remove(attachment: InvoiceAttachment): Promise<void> {
+    removingId.value = attachment.id
+    try {
+      await invoiceService.removeAttachment(invoiceId, attachment.id)
+      attachments.value = attachments.value.filter((a) => a.id !== attachment.id)
+      toast.success('Piece jointe supprimee.')
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      removingId.value = null
+    }
+  }
+
+  return { attachments, isLoading, isUploading, removingId, load, upload, remove }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, Package, Plus, Search, Upload } from 'lucide-vue-next'
+import { Download, Package, Plus, Search, Settings2, Upload } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -8,13 +8,14 @@ import BaseCard from '@/components/base/BaseCard.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import CategoryManagerDialog from '@/components/products/CategoryManagerDialog.vue'
 import ProductForm from '@/components/products/ProductForm.vue'
 import ProductImportDialog from '@/components/products/ProductImportDialog.vue'
 import ProductList from '@/components/products/ProductList.vue'
 import EmptyState from '@/components/states/EmptyState.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
-import { useProducts, usePermissions } from '@/composables'
+import { useProductCategories, useProducts, usePermissions } from '@/composables'
 import { ROUTE_NAMES } from '@/constants'
 import { useAuthStore } from '@/stores'
 import type { ApiError, CreateProductPayload, Product } from '@/types'
@@ -28,6 +29,7 @@ const currency = computed(() => authStore.business?.currency ?? 'XOF')
 const {
   store,
   search,
+  categoryFilter,
   pagination,
   isSubmitting,
   isDeleting,
@@ -43,7 +45,12 @@ const {
   importProductsFromCsv
 } = useProducts()
 
-onMounted(() => load())
+const { options: categoryOptions, ensureLoaded: ensureCategoriesLoaded } = useProductCategories()
+
+onMounted(() => {
+  void load()
+  void ensureCategoriesLoaded()
+})
 
 // --- Import / export ------------------------------------------------------
 
@@ -58,9 +65,9 @@ async function onImport(fileText: string): Promise<void> {
   importDialogRef.value?.reset()
 }
 
-const categorySuggestions = computed(() =>
-  Array.from(new Set(store.items.map((p) => p.category).filter(Boolean))).sort()
-)
+// --- Categories -------------------------------------------------------
+
+const isCategoryManagerOpen = ref(false)
 
 // --- Creation / modification ---------------------------------------------
 
@@ -140,6 +147,14 @@ function viewProduct(product: Product): void {
           <Upload class="size-4" aria-hidden="true" />
           Importer
         </BaseButton>
+        <BaseButton
+          v-if="can('product:create')"
+          variant="outline"
+          @click="isCategoryManagerOpen = true"
+        >
+          <Settings2 class="size-4" aria-hidden="true" />
+          Categories
+        </BaseButton>
         <BaseButton v-if="can('product:create')" @click="openCreateForm">
           <Plus class="size-4" aria-hidden="true" />
           Nouveau produit
@@ -148,8 +163,8 @@ function viewProduct(product: Product): void {
     </PageHeader>
 
     <BaseCard>
-      <div class="mb-4">
-        <div class="relative max-w-sm">
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <div class="relative max-w-sm flex-1">
           <Search
             class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400"
           />
@@ -160,6 +175,15 @@ function viewProduct(product: Product): void {
             class="focus-ring w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
+        <select
+          v-model="categoryFilter"
+          class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+        >
+          <option value="">Toutes les categories</option>
+          <option v-for="option in categoryOptions" :key="option.id" :value="option.id">
+            {{ '—'.repeat(option.depth) }} {{ option.label }}
+          </option>
+        </select>
       </div>
 
       <LoadingState
@@ -176,7 +200,7 @@ function viewProduct(product: Product): void {
         :icon="Package"
         title="Aucun produit"
         :message="
-          search
+          search || categoryFilter
             ? 'Aucun resultat pour cette recherche.'
             : 'Ajoutez votre premier produit ou service pour commencer.'
         "
@@ -227,11 +251,14 @@ function viewProduct(product: Product): void {
         :product="editingProduct"
         :submitting="isSubmitting"
         :server-errors="formServerErrors"
-        :category-suggestions="categorySuggestions"
+        :category-options="categoryOptions"
         @submit="onFormSubmit"
         @cancel="closeForm"
+        @manage-categories="isCategoryManagerOpen = true"
       />
     </BaseModal>
+
+    <CategoryManagerDialog :open="isCategoryManagerOpen" @close="isCategoryManagerOpen = false" />
 
     <ConfirmDialog
       :open="productPendingDelete !== null"

@@ -2,12 +2,14 @@
 import {
   ArrowLeft,
   Ban,
+  BellRing,
   CalendarClock,
   CheckCircle2,
   Copy,
   Download,
   ExternalLink,
   FileMinus,
+  Link2,
   Mail,
   MessageCircle,
   MoreHorizontal,
@@ -29,7 +31,9 @@ import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import CreditNoteForm from '@/components/creditNotes/CreditNoteForm.vue'
 import CreditNoteList from '@/components/creditNotes/CreditNoteList.vue'
 import DropdownMenu from '@/components/base/DropdownMenu.vue'
+import InvoiceAttachments from '@/components/invoices/InvoiceAttachments.vue'
 import InvoiceForm from '@/components/invoices/InvoiceForm.vue'
+import InvoiceShareDialog from '@/components/invoices/InvoiceShareDialog.vue'
 import InvoiceSummary from '@/components/invoices/InvoiceSummary.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import InstallmentPayForm from '@/components/payments/InstallmentPayForm.vue'
@@ -45,6 +49,7 @@ import {
   useApi,
   useInstallmentPlan,
   useInvoiceActions,
+  useInvoiceAttachments,
   useInvoiceCreditNotes,
   usePayments
 } from '@/composables'
@@ -70,7 +75,7 @@ import type {
   Payment,
   PaymentInstallment
 } from '@/types'
-import { formatCurrency, formatDate } from '@/utils/formatters'
+import { formatCurrency, formatDate, formatDateTime } from '@/utils/formatters'
 import type { InvoiceTotals } from '@/utils/invoiceCalculations'
 import { getInvoiceBalance, getInvoicePaymentStatus } from '@/utils/paymentStatus'
 
@@ -124,6 +129,16 @@ const {
 } = useInvoiceCreditNotes(props.id)
 
 const {
+  attachments,
+  isLoading: isLoadingAttachments,
+  isUploading: isUploadingAttachment,
+  removingId: removingAttachmentId,
+  load: loadAttachments,
+  upload: uploadAttachment,
+  remove: removeAttachment
+} = useInvoiceAttachments(props.id)
+
+const {
   isCancelling,
   isDuplicating,
   isDownloading,
@@ -132,6 +147,7 @@ const {
   isSharing,
   isSendingEmail,
   isSendingWhatsApp,
+  isSendingReminder,
   cancelInvoice,
   duplicateInvoice,
   downloadInvoice,
@@ -139,7 +155,8 @@ const {
   printInvoice,
   shareInvoice,
   sendInvoiceByEmail,
-  sendInvoiceByWhatsApp
+  sendInvoiceByWhatsApp,
+  sendReminder
 } = useInvoiceActions()
 
 // Regroupe les actions "document" secondaires (menu deroulant) : le menu se
@@ -151,11 +168,18 @@ const isProcessingDocumentAction = computed(
     isDuplicating.value ||
     isSharing.value ||
     isSendingEmail.value ||
-    isSendingWhatsApp.value
+    isSendingWhatsApp.value ||
+    isSendingReminder.value
 )
 
 async function load(): Promise<void> {
-  await Promise.all([execute(props.id), loadPayments(), loadCreditNotes(), loadInstallmentPlan()])
+  await Promise.all([
+    execute(props.id),
+    loadPayments(),
+    loadCreditNotes(),
+    loadInstallmentPlan(),
+    loadAttachments()
+  ])
 }
 
 // --- Edition inline (brouillons uniquement) --------------------------
@@ -358,6 +382,49 @@ async function onSendWhatsApp(): Promise<void> {
   if (invoice.value) await sendInvoiceByWhatsApp(invoice.value)
 }
 
+/** Un rappel n'a de sens que pour une facture envoyee/en retard avec un solde restant. */
+const canSendReminder = computed(
+  () =>
+    invoice.value !== null &&
+    ['sent', 'partially_paid', 'overdue'].includes(invoice.value.status) &&
+    balance.value > 0
+)
+
+async function onSendReminder(): Promise<void> {
+  if (!invoice.value) return
+  const updated = await sendReminder(invoice.value)
+  if (updated) invoice.value = updated
+}
+
+// --- Pieces jointes -----------------------------------------------------
+
+async function onUploadAttachment(file: File): Promise<void> {
+  await uploadAttachment(file)
+}
+
+// --- Lien public / QR code -----------------------------------------------
+
+const isShareDialogOpen = ref(false)
+const isGeneratingShareLink = ref(false)
+const shareUrl = ref<string | null>(null)
+
+async function openShareDialog(): Promise<void> {
+  if (!invoice.value) return
+  isShareDialogOpen.value = true
+  if (invoice.value.shareToken) {
+    shareUrl.value = `${window.location.origin}/facture/${invoice.value.shareToken}`
+    return
+  }
+  isGeneratingShareLink.value = true
+  try {
+    const { shareToken } = await invoiceService.getShareLink(invoice.value.id)
+    invoice.value.shareToken = shareToken
+    shareUrl.value = `${window.location.origin}/facture/${shareToken}`
+  } finally {
+    isGeneratingShareLink.value = false
+  }
+}
+
 const isCancelDialogOpen = ref(false)
 
 async function confirmCancel(): Promise<void> {
@@ -456,6 +523,14 @@ async function confirmCancel(): Promise<void> {
             <button
               type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              @click="openShareDialog"
+            >
+              <Link2 class="size-4" aria-hidden="true" />
+              Lien public / QR code
+            </button>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
               @click="onShare"
             >
               <Share2 class="size-4" aria-hidden="true" />
@@ -476,6 +551,15 @@ async function confirmCancel(): Promise<void> {
             >
               <MessageCircle class="size-4" aria-hidden="true" />
               Envoyer par WhatsApp
+            </button>
+            <button
+              v-if="canSendReminder"
+              type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              @click="onSendReminder"
+            >
+              <BellRing class="size-4" aria-hidden="true" />
+              Envoyer un rappel
             </button>
             <button
               v-if="canCancelInvoice(invoice.status)"
@@ -526,10 +610,27 @@ async function confirmCancel(): Promise<void> {
               <dt class="text-gray-500">Date d'echeance</dt>
               <dd class="text-gray-900">{{ formatDate(invoice.dueDate) }}</dd>
             </div>
+            <div
+              v-for="field in invoice.customFields"
+              :key="field.label"
+              class="flex justify-between"
+            >
+              <dt class="text-gray-500">{{ field.label }}</dt>
+              <dd class="text-gray-900">{{ field.value }}</dd>
+            </div>
           </dl>
           <p v-if="invoice.notes" class="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-600">
             {{ invoice.notes }}
           </p>
+          <div
+            v-if="invoice.internalNotes"
+            class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 print:hidden"
+          >
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wide">
+              Notes internes (equipe uniquement)
+            </p>
+            {{ invoice.internalNotes }}
+          </div>
         </BaseCard>
 
         <BaseCard title="Recapitulatif">
@@ -603,6 +704,14 @@ async function confirmCancel(): Promise<void> {
             </BaseBadge>
           </div>
         </div>
+
+        <p
+          v-if="invoice.lastReminderSentAt"
+          class="mb-6 flex items-center gap-1.5 text-xs text-gray-500 print:hidden"
+        >
+          <BellRing class="size-3.5 shrink-0" aria-hidden="true" />
+          Dernier rappel envoye le {{ formatDateTime(invoice.lastReminderSentAt) }}
+        </p>
 
         <LoadingState
           v-if="isLoadingPayments && payments.length === 0"
@@ -688,6 +797,21 @@ async function confirmCancel(): Promise<void> {
           :credit-notes="creditNotes"
           :currency="currency"
           hide-invoice-column
+        />
+      </BaseCard>
+
+      <BaseCard title="Pieces jointes" class="print:hidden">
+        <LoadingState
+          v-if="isLoadingAttachments && attachments.length === 0"
+          message="Chargement des pieces jointes..."
+        />
+        <InvoiceAttachments
+          v-else
+          :attachments="attachments"
+          :is-uploading="isUploadingAttachment"
+          :removing-id="removingAttachmentId"
+          @upload="onUploadAttachment"
+          @remove="removeAttachment"
         />
       </BaseCard>
     </div>
@@ -783,6 +907,13 @@ async function confirmCancel(): Promise<void> {
       :loading="isCancelling"
       @confirm="confirmCancel"
       @cancel="isCancelDialogOpen = false"
+    />
+
+    <InvoiceShareDialog
+      :open="isShareDialogOpen"
+      :share-url="shareUrl"
+      :is-loading="isGeneratingShareLink"
+      @close="isShareDialogOpen = false"
     />
   </div>
 </template>

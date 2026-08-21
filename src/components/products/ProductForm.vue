@@ -1,13 +1,19 @@
 <script setup lang="ts">
-import { Plus, Trash2 } from 'lucide-vue-next'
-import { computed, reactive, ref, useId, watch } from 'vue'
+import { Plus, Settings2, Trash2 } from 'lucide-vue-next'
+import { computed, reactive, ref, watch } from 'vue'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import { PRODUCT_TYPE_LABELS } from '@/constants'
-import type { CreateProductPayload, PriceBreak, Product, ProductType } from '@/types'
+import type { CreateProductPayload, ID, PriceBreak, Product, ProductType } from '@/types'
 import { isRequired } from '@/utils/validators'
+
+interface CategoryOption {
+  id: ID
+  label: string
+  depth: number
+}
 
 interface Props {
   /** Produit a modifier ; absent/`null` => formulaire de creation. */
@@ -15,20 +21,21 @@ interface Props {
   submitting?: boolean
   /** Erreurs de validation renvoyees par le backend, par champ. */
   serverErrors?: Record<string, string[]> | null
-  /** Categories deja utilisees, proposees en saisie assistee. */
-  categorySuggestions?: string[]
+  /** Options de categorie (arborescence aplatie), voir `useProductCategories`. */
+  categoryOptions?: CategoryOption[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   product: null,
   submitting: false,
   serverErrors: null,
-  categorySuggestions: () => []
+  categoryOptions: () => []
 })
 
 const emit = defineEmits<{
   submit: [payload: CreateProductPayload]
   cancel: []
+  'manage-categories': []
 }>()
 
 /**
@@ -40,7 +47,7 @@ const emit = defineEmits<{
 interface ProductFormState {
   name: string
   description: string
-  category: string
+  categoryId: string
   type: ProductType
   price: string
   taxRate: string
@@ -59,7 +66,7 @@ function emptyForm(): ProductFormState {
   return {
     name: '',
     description: '',
-    category: '',
+    categoryId: '',
     type: 'product',
     price: '',
     taxRate: '0',
@@ -72,7 +79,6 @@ function emptyForm(): ProductFormState {
 
 const form = reactive<ProductFormState>(emptyForm())
 const localErrors = reactive<Partial<Record<keyof ProductFormState, string>>>({})
-const categoryListId = useId()
 const priceBreakRows = ref<PriceBreakRow[]>([])
 
 watch(
@@ -84,7 +90,7 @@ watch(
         ? {
             name: product.name,
             description: product.description ?? '',
-            category: product.category,
+            categoryId: product.categoryId,
             type: product.type,
             price: String(product.price),
             taxRate: String(product.taxRate),
@@ -121,7 +127,7 @@ function fieldError(field: keyof ProductFormState): string | undefined {
 
 function validate(): boolean {
   localErrors.name = !isRequired(form.name) ? 'Le nom est requis.' : undefined
-  localErrors.category = !isRequired(form.category) ? 'La categorie est requise.' : undefined
+  localErrors.categoryId = !isRequired(form.categoryId) ? 'La categorie est requise.' : undefined
 
   const price = Number(form.price)
   localErrors.price =
@@ -170,7 +176,7 @@ function onSubmit(): void {
   const payload: CreateProductPayload = {
     name: form.name.trim(),
     description: form.description.trim() || undefined,
-    category: form.category.trim(),
+    categoryId: form.categoryId,
     type: form.type,
     price: Number(form.price),
     taxRate: form.taxRate.trim() === '' ? 0 : Number(form.taxRate),
@@ -209,23 +215,37 @@ function onSubmit(): void {
     <BaseTextarea v-model="form.description" label="Description" :rows="2" />
 
     <div class="flex flex-col gap-1.5">
-      <label class="text-sm font-medium text-gray-700" for="product-category">
-        Categorie
-        <span class="text-red-500">*</span>
-      </label>
-      <input
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-medium text-gray-700" for="product-category">
+          Categorie
+          <span class="text-red-500">*</span>
+        </label>
+        <button
+          type="button"
+          class="focus-ring inline-flex items-center gap-1 rounded text-xs font-medium text-primary-600 hover:text-primary-700"
+          @click="emit('manage-categories')"
+        >
+          <Settings2 class="size-3.5" aria-hidden="true" />
+          Gerer les categories
+        </button>
+      </div>
+      <select
         id="product-category"
-        v-model="form.category"
-        :list="categoryListId"
-        type="text"
-        placeholder="Ex : Boissons, Coiffure, Vetements..."
-        class="focus-ring rounded-lg border px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
-        :class="fieldError('category') ? 'border-red-400' : 'border-gray-300'"
-      />
-      <datalist :id="categoryListId">
-        <option v-for="category in categorySuggestions" :key="category" :value="category" />
-      </datalist>
-      <p v-if="fieldError('category')" class="text-sm text-red-600">{{ fieldError('category') }}</p>
+        v-model="form.categoryId"
+        class="focus-ring rounded-lg border px-3 py-2 text-sm text-gray-900"
+        :class="fieldError('categoryId') ? 'border-red-400' : 'border-gray-300'"
+      >
+        <option value="" disabled>Selectionner une categorie...</option>
+        <option v-for="option in categoryOptions" :key="option.id" :value="option.id">
+          {{ '—'.repeat(option.depth) }} {{ option.label }}
+        </option>
+      </select>
+      <p v-if="categoryOptions.length === 0" class="text-sm text-gray-400">
+        Aucune categorie pour l'instant : creez-en une via "Gerer les categories".
+      </p>
+      <p v-if="fieldError('categoryId')" class="text-sm text-red-600">
+        {{ fieldError('categoryId') }}
+      </p>
     </div>
 
     <div class="grid grid-cols-3 gap-4">

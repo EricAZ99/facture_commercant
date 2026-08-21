@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import {
   ArrowRightLeft,
+  BellRing,
   CalendarClock,
   ClipboardList,
   CreditCard,
   FileMinus,
   FilePlus,
+  Layers,
   PackagePlus,
   Send,
   Undo2,
@@ -27,10 +29,12 @@ defineProps<Props>()
 const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
   invoice_created: FilePlus,
   invoice_sent: Send,
+  invoice_reminder_sent: BellRing,
   payment_received: Wallet,
   payment_refunded: Undo2,
   client_created: UserPlus,
   product_created: PackagePlus,
+  kit_created: Layers,
   quote_created: ClipboardList,
   quote_sent: Send,
   quote_converted: ArrowRightLeft,

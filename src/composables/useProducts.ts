@@ -7,6 +7,7 @@ import type {
   CreateProductPayload,
   ID,
   Product,
+  ProductImportPayload,
   ProductImportResult,
   ProductStockMovement,
   UpdateProductPayload
@@ -31,6 +32,8 @@ export function useProducts() {
   const pagination = usePagination(10)
 
   const search = ref('')
+  /** Filtre optionnel par categorie (inclut ses sous-categories cote backend). */
+  const categoryFilter = ref<ID | ''>('')
   const isSubmitting = ref(false)
   const isDeleting = ref(false)
   const isExporting = ref(false)
@@ -40,12 +43,18 @@ export function useProducts() {
     await store.fetchProducts({
       page: pagination.page.value,
       perPage: pagination.perPage.value,
-      search: search.value.trim() || undefined
+      search: search.value.trim() || undefined,
+      categoryId: categoryFilter.value || undefined
     })
     if (store.status === 'success') {
       pagination.applyMeta(store.meta)
     }
   }
+
+  watch(categoryFilter, () => {
+    pagination.goToPage(1)
+    void load()
+  })
 
   function goToPage(target: number): void {
     if (target === pagination.page.value) return
@@ -132,12 +141,13 @@ export function useProducts() {
     }
   }
 
-  /** Exporte en CSV tous les produits correspondant a la recherche en cours. */
+  /** Exporte en CSV tous les produits correspondant a la recherche/au filtre categorie en cours. */
   async function exportProducts(): Promise<void> {
     isExporting.value = true
     try {
       const response = await productService.list({
         search: search.value.trim() || undefined,
+        categoryId: categoryFilter.value || undefined,
         page: 1,
         perPage: 10000
       })
@@ -162,7 +172,9 @@ export function useProducts() {
 
     isImporting.value = true
     try {
-      const result = await productService.importMany(products.map((p) => p.payload))
+      const result = await productService.importMany(
+        products.map((p): ProductImportPayload => p.payload)
+      )
       const allErrors = [...parseErrors, ...result.errors]
       if (result.createdCount > 0) {
         toast.success(`${result.createdCount} produit(s) importe(s) avec succes.`)
@@ -183,6 +195,7 @@ export function useProducts() {
   return {
     store,
     search,
+    categoryFilter,
     pagination,
     isSubmitting,
     isDeleting,

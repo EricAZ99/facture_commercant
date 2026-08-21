@@ -4,6 +4,7 @@ import {
   CreditCard,
   FileMinus,
   FileText,
+  Layers,
   LayoutDashboard,
   LifeBuoy,
   Package,
@@ -34,6 +35,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Produits',
     routeName: ROUTE_NAMES.products,
     icon: Package,
+    permission: 'product:read'
+  },
+  {
+    label: 'Kits',
+    routeName: ROUTE_NAMES.kits,
+    icon: Layers,
     permission: 'product:read'
   },
   {

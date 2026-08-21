@@ -53,10 +53,12 @@ export interface PaymentMethodBreakdown {
 export type ActivityType =
   | 'invoice_created'
   | 'invoice_sent'
+  | 'invoice_reminder_sent'
   | 'payment_received'
   | 'payment_refunded'
   | 'client_created'
   | 'product_created'
+  | 'kit_created'
   | 'quote_created'
   | 'quote_sent'
   | 'quote_converted'
