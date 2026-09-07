@@ -57,5 +57,10 @@ export const clientService = {
   async merge(payload: MergeClientsPayload): Promise<Client> {
     const { data } = await apiClient.post<ApiResponse<Client>>(API_ENDPOINTS.clients.merge, payload)
     return data.data
+  },
+
+  /** Supprime plusieurs clients en une seule requete. */
+  async deleteMany(ids: ID[]): Promise<void> {
+    await apiClient.post(API_ENDPOINTS.clients.deleteMany, { ids })
   }
 }

@@ -5,7 +5,6 @@ import { reactive, ref } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import LogoUploader from '@/components/business/LogoUploader.vue'
-import { ROLE_LABELS } from '@/constants'
 import { useMyAccount } from '@/composables'
 import { useAuthStore } from '@/stores'
 import type { ApiError } from '@/types'
@@ -15,12 +14,14 @@ const authStore = useAuthStore()
 const {
   isUploadingAvatar,
   isChangingEmail,
+  isChangingPassword,
   isExporting,
   loginHistory,
   isLoadingHistory,
   loadLoginHistory,
   submitAvatar,
   submitChangeEmail,
+  submitChangePassword,
   exportMyData
 } = useMyAccount()
 
@@ -52,6 +53,29 @@ async function onEmailSubmit(): Promise<void> {
   }
   isEmailFormOpen.value = false
 }
+
+// --- Changement de mot de passe ------------------------------------------
+
+const isPasswordFormOpen = ref(false)
+const passwordForm = reactive({ currentPassword: '', newPassword: '' })
+const passwordServerErrors = ref<Record<string, string[]> | null>(null)
+
+function openPasswordForm(): void {
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordServerErrors.value = null
+  isPasswordFormOpen.value = true
+}
+
+async function onPasswordSubmit(): Promise<void> {
+  passwordServerErrors.value = null
+  const error: ApiError | null = await submitChangePassword(passwordForm)
+  if (error) {
+    passwordServerErrors.value = error.details ?? null
+    return
+  }
+  isPasswordFormOpen.value = false
+}
 </script>
 
 <template>
@@ -68,13 +92,13 @@ async function onEmailSubmit(): Promise<void> {
 
     <dl class="grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
       <div>
-        <dt class="text-gray-500">Nom</dt>
+        <dt class="text-gray-500">{{ $t('settings.name') }}</dt>
         <dd class="font-medium text-gray-900">
           {{ authStore.user?.firstName }} {{ authStore.user?.lastName }}
         </dd>
       </div>
       <div>
-        <dt class="text-gray-500">Email</dt>
+        <dt class="text-gray-500">{{ $t('clients.form.emailLabel') }}</dt>
         <dd class="flex items-center gap-2 font-medium text-gray-900">
           {{ authStore.user?.email }}
           <button
@@ -82,14 +106,27 @@ async function onEmailSubmit(): Promise<void> {
             class="focus-ring rounded text-xs font-medium text-primary-600 hover:underline"
             @click="openEmailForm"
           >
-            Modifier
+            {{ $t('invoices.detail.edit') }}
           </button>
         </dd>
       </div>
       <div>
-        <dt class="text-gray-500">Role</dt>
+        <dt class="text-gray-500">{{ $t('users.list.columnRole') }}</dt>
         <dd class="font-medium text-gray-900">
-          {{ authStore.role ? ROLE_LABELS[authStore.role] : '-' }}
+          {{ authStore.role ? $t(`roles.${authStore.role}`) : '-' }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-gray-500">{{ $t('auth.passwordLabel') }}</dt>
+        <dd class="flex items-center gap-2 font-medium text-gray-900">
+          ••••••••
+          <button
+            type="button"
+            class="focus-ring rounded text-xs font-medium text-primary-600 hover:underline"
+            @click="openPasswordForm"
+          >
+            {{ $t('invoices.detail.edit') }}
+          </button>
         </dd>
       </div>
     </dl>
@@ -102,33 +139,62 @@ async function onEmailSubmit(): Promise<void> {
       <BaseInput
         v-model="emailForm.newEmail"
         type="email"
-        label="Nouvel email"
+        :label="$t('settingsMyAccountForm.newEmailLabel')"
         :error="emailServerErrors?.newEmail?.[0]"
         required
       />
       <BaseInput
         v-model="emailForm.password"
         type="password"
-        label="Mot de passe actuel"
-        hint="Requis pour confirmer le changement."
+        :label="$t('settingsMyAccountForm.currentPasswordLabel')"
+        :hint="$t('settingsMyAccountForm.currentPasswordHint')"
         :error="emailServerErrors?.password?.[0]"
         required
       />
       <div class="flex justify-end gap-2">
         <BaseButton type="button" variant="outline" @click="isEmailFormOpen = false">
-          Annuler
+          {{ $t('common.cancel') }}
         </BaseButton>
-        <BaseButton type="submit" :loading="isChangingEmail">Enregistrer</BaseButton>
+        <BaseButton type="submit" :loading="isChangingEmail">{{ $t('common.save') }}</BaseButton>
+      </div>
+    </form>
+
+    <form
+      v-if="isPasswordFormOpen"
+      class="flex flex-col gap-3 rounded-lg border border-gray-200 p-3"
+      @submit.prevent="onPasswordSubmit"
+    >
+      <BaseInput
+        v-model="passwordForm.currentPassword"
+        type="password"
+        :label="$t('settingsMyAccountForm.currentPasswordLabel')"
+        :error="passwordServerErrors?.currentPassword?.[0]"
+        required
+      />
+      <BaseInput
+        v-model="passwordForm.newPassword"
+        type="password"
+        :label="$t('auth.resetPassword.newPasswordLabel')"
+        :error="passwordServerErrors?.newPassword?.[0]"
+        required
+      />
+      <div class="flex justify-end gap-2">
+        <BaseButton type="button" variant="outline" @click="isPasswordFormOpen = false">
+          {{ $t('common.cancel') }}
+        </BaseButton>
+        <BaseButton type="submit" :loading="isChangingPassword">{{ $t('common.save') }}</BaseButton>
       </div>
     </form>
 
     <div class="border-t border-gray-100 pt-4">
-      <p class="mb-2 text-sm font-medium text-gray-700">Historique de connexion</p>
+      <p class="mb-2 text-sm font-medium text-gray-700">
+        {{ $t('settingsMyAccountForm.loginHistoryTitle') }}
+      </p>
       <p v-if="isLoadingHistory && loginHistory.length === 0" class="text-sm text-gray-400">
-        Chargement...
+        {{ $t('notifications.loading') }}
       </p>
       <p v-else-if="loginHistory.length === 0" class="text-sm text-gray-400">
-        Aucune connexion enregistree.
+        {{ $t('settingsMyAccountForm.noLoginHistory') }}
       </p>
       <ul v-else class="flex flex-col gap-1 text-sm">
         <li
@@ -145,7 +211,7 @@ async function onEmailSubmit(): Promise<void> {
     <div class="border-t border-gray-100 pt-4">
       <BaseButton variant="outline" size="sm" :loading="isExporting" @click="exportMyData">
         <Download class="size-4" aria-hidden="true" />
-        Exporter mes donnees personnelles
+        {{ $t('settingsMyAccountForm.exportData') }}
       </BaseButton>
     </div>
   </div>

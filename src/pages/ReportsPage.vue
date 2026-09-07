@@ -11,6 +11,7 @@ import {
   Wallet
 } from 'lucide-vue-next'
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
@@ -32,6 +33,7 @@ import { downloadCsv } from '@/utils/csv'
 import { formatCurrency, formatNumber } from '@/utils/formatters'
 import { reportsToCsv } from '@/utils/reportCsv'
 
+const { t } = useI18n()
 const authStore = useAuthStore()
 const currency = computed(() => authStore.business?.currency ?? 'XOF')
 
@@ -82,7 +84,7 @@ const topProductItems = computed(
       id: product.productId,
       label: product.name,
       value: product.revenue,
-      secondaryLabel: `${formatNumber(product.quantitySold)} vendu(s)`
+      secondaryLabel: t('reports.unitsSold', { count: formatNumber(product.quantitySold) })
     })) ?? []
 )
 
@@ -92,20 +94,20 @@ const topClientItems = computed(
       id: client.clientId,
       label: client.name,
       value: client.totalSpent,
-      secondaryLabel: `${formatNumber(client.invoicesCount)} facture(s)`
+      secondaryLabel: t('invoices.count', { count: formatNumber(client.invoicesCount) })
     })) ?? []
 )
 </script>
 
 <template>
   <div>
-    <PageHeader title="Rapports" subtitle="Analysez la performance de votre commerce.">
+    <PageHeader :title="$t('reports.title')" :subtitle="$t('reports.subtitle')">
       <template #actions>
         <DropdownMenu v-if="!isEmpty">
           <template #trigger="{ toggle }">
             <BaseButton variant="outline" size="sm" :loading="isExporting" @click="toggle">
               <Download v-if="!isExporting" class="size-4" aria-hidden="true" />
-              Exporter
+              {{ $t('common.export') }}
             </BaseButton>
           </template>
           <button
@@ -113,21 +115,21 @@ const topClientItems = computed(
             class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
             @click="exportAsPng(reportContentRef)"
           >
-            Image (PNG)
+            {{ $t('dashboard.exportPng') }}
           </button>
           <button
             type="button"
             class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
             @click="exportAsPdf(reportContentRef)"
           >
-            PDF
+            {{ $t('dashboard.exportPdf') }}
           </button>
           <button
             type="button"
             class="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
             @click="exportCsv"
           >
-            Tableaux (CSV)
+            {{ $t('reports.exportCsv') }}
           </button>
         </DropdownMenu>
       </template>
@@ -157,11 +159,11 @@ const topClientItems = computed(
           class="focus-ring size-4 rounded border-gray-300"
           @change="toggleComparePrevious"
         />
-        Comparer a la periode precedente
+        {{ $t('reports.comparePrevious') }}
       </label>
     </BaseCard>
 
-    <LoadingState v-if="isInitialLoading" message="Chargement des rapports..." />
+    <LoadingState v-if="isInitialLoading" :message="$t('reports.loading')" />
     <ErrorState
       v-else-if="hasFatalError"
       :message="summary.error.value?.message"
@@ -170,38 +172,38 @@ const topClientItems = computed(
     <EmptyState
       v-else-if="isEmpty"
       :icon="BarChart3"
-      title="Aucune donnee"
-      message="Aucune vente ou facture sur cette periode/ces filtres."
+      :title="$t('dashboard.emptyData')"
+      :message="$t('reports.emptyMessage')"
     />
 
     <div v-else ref="reportContentRef" class="flex flex-col gap-6">
-      <div v-if="isRefreshing" class="text-xs text-gray-400">Actualisation...</div>
+      <div v-if="isRefreshing" class="text-xs text-gray-400">{{ $t('reports.refreshing') }}</div>
 
       <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="Chiffre d'affaires"
+          :label="$t('dashboard.kpi.revenue')"
           :value="formatCurrency(summary.data.value?.revenueTotal ?? 0, currency)"
           :icon="Wallet"
         />
         <StatCard
-          label="Ventes"
+          :label="$t('reports.kpi.sales')"
           :value="formatNumber(summary.data.value?.salesCount ?? 0)"
           :icon="FileText"
         />
         <StatCard
-          label="Factures"
+          :label="$t('dashboard.kpi.invoices')"
           :value="formatNumber(summary.data.value?.invoicesCount ?? 0)"
           :icon="Package"
         />
         <StatCard
-          label="Impayes"
+          :label="$t('reports.kpi.unpaid')"
           :value="formatCurrency(summary.data.value?.unpaidTotal ?? 0, currency)"
           :icon="AlertTriangle"
           tone="warning"
         />
         <StatCard
           v-if="monthlyProjection !== null"
-          label="Projection sur 30 jours"
+          :label="$t('reports.kpi.projection')"
           :value="formatCurrency(monthlyProjection, currency)"
           :icon="TrendingUp"
         />
@@ -209,14 +211,14 @@ const topClientItems = computed(
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DashboardWidgetCard
-          title="Evolution du chiffre d'affaires"
+          :title="$t('dashboard.widgets.revenueChart')"
           :loading="revenue.isLoading.value"
           :has-data="revenue.data.value !== null"
           :error="revenue.error.value?.message ?? null"
           :is-empty="revenue.data.value?.length === 0"
           :empty-icon="Wallet"
-          empty-title="Aucune donnee"
-          empty-message="Aucun encaissement sur cette periode."
+          :empty-title="$t('dashboard.emptyData')"
+          :empty-message="$t('dashboard.noRevenueThisPeriod')"
           @retry="refresh"
         >
           <RevenueChart
@@ -227,14 +229,14 @@ const topClientItems = computed(
         </DashboardWidgetCard>
 
         <DashboardWidgetCard
-          title="Repartition des factures"
+          :title="$t('reports.widgets.invoiceBreakdown')"
           :loading="invoiceStatus.isLoading.value"
           :has-data="invoiceStatus.data.value !== null"
           :error="invoiceStatus.error.value?.message ?? null"
           :is-empty="invoiceStatus.data.value?.every((item) => item.count === 0) ?? false"
           :empty-icon="FileText"
-          empty-title="Aucune donnee"
-          empty-message="Aucune facture sur cette periode/ces filtres."
+          :empty-title="$t('dashboard.emptyData')"
+          :empty-message="$t('reports.noInvoicesFiltered')"
           @retry="refresh"
         >
           <InvoiceStatusBreakdownChart
@@ -246,28 +248,28 @@ const topClientItems = computed(
 
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <DashboardWidgetCard
-          title="Repartition des paiements"
+          :title="$t('dashboard.widgets.paymentBreakdown')"
           :loading="paymentMethods.isLoading.value"
           :has-data="paymentMethods.data.value !== null"
           :error="paymentMethods.error.value?.message ?? null"
           :is-empty="paymentMethods.data.value?.every((item) => item.amount === 0) ?? false"
           :empty-icon="Wallet"
-          empty-title="Aucune donnee"
-          empty-message="Aucun paiement encaisse sur cette periode."
+          :empty-title="$t('dashboard.emptyData')"
+          :empty-message="$t('dashboard.noPaymentThisPeriod')"
           @retry="refresh"
         >
           <PaymentBreakdownChart :data="paymentMethods.data.value ?? []" :currency="currency" />
         </DashboardWidgetCard>
 
         <DashboardWidgetCard
-          title="Produits les plus vendus"
+          :title="$t('reports.widgets.topProducts')"
           :loading="topProducts.isLoading.value"
           :has-data="topProducts.data.value !== null"
           :error="topProducts.error.value?.message ?? null"
           :is-empty="topProductItems.length === 0"
           :empty-icon="Package"
-          empty-title="Aucune donnee"
-          empty-message="Aucune vente de produit sur cette periode/ces filtres."
+          :empty-title="$t('dashboard.emptyData')"
+          :empty-message="$t('reports.noProductSales')"
           @retry="refresh"
         >
           <RankedList :items="topProductItems" :format-value="(v) => formatCurrency(v, currency)" />
@@ -275,37 +277,41 @@ const topClientItems = computed(
       </div>
 
       <DashboardWidgetCard
-        title="Meilleurs clients"
+        :title="$t('reports.widgets.topClients')"
         :loading="topClients.isLoading.value"
         :has-data="topClients.data.value !== null"
         :error="topClients.error.value?.message ?? null"
         :is-empty="topClientItems.length === 0"
         :empty-icon="Users"
-        empty-title="Aucune donnee"
-        empty-message="Aucun client facture sur cette periode/ces filtres."
+        :empty-title="$t('dashboard.emptyData')"
+        :empty-message="$t('reports.noClientInvoiced')"
         @retry="refresh"
       >
         <RankedList :items="topClientItems" :format-value="(v) => formatCurrency(v, currency)" />
       </DashboardWidgetCard>
 
       <DashboardWidgetCard
-        title="TVA collectee"
+        :title="$t('reports.widgets.vat')"
         :loading="vat.isLoading.value"
         :has-data="vat.data.value !== null"
         :error="vat.error.value?.message ?? null"
         :is-empty="(vat.data.value?.items.length ?? 0) === 0"
         :empty-icon="Receipt"
-        empty-title="Aucune donnee"
-        empty-message="Aucune TVA collectee sur cette periode/ces filtres."
+        :empty-title="$t('dashboard.emptyData')"
+        :empty-message="$t('reports.noVatCollected')"
         @retry="refresh"
       >
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead>
               <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                <th class="py-2 pr-4 font-medium">Taux</th>
-                <th class="py-2 pr-4 text-right font-medium">Base imposable</th>
-                <th class="py-2 pl-4 text-right font-medium">TVA collectee</th>
+                <th class="py-2 pr-4 font-medium">{{ $t('reports.vatTable.columnRate') }}</th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('reports.vatTable.columnTaxableBase') }}
+                </th>
+                <th class="py-2 pl-4 text-right font-medium">
+                  {{ $t('reports.vatTable.columnVatCollected') }}
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -321,7 +327,7 @@ const topClientItems = computed(
             </tbody>
             <tfoot v-if="vat.data.value">
               <tr class="border-t border-gray-200 font-semibold">
-                <td class="py-2 pr-4 text-gray-900">Total</td>
+                <td class="py-2 pr-4 text-gray-900">{{ $t('invoices.summary.total') }}</td>
                 <td class="py-2 pr-4 text-right text-gray-900">
                   {{ formatCurrency(vat.data.value.totalTaxableAmount, currency) }}
                 </td>

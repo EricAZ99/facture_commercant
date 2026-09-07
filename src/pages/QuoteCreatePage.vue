@@ -19,10 +19,7 @@ async function onSuccess(quote: Quote): Promise<void> {
 
 <template>
   <div>
-    <PageHeader
-      title="Nouveau devis"
-      subtitle="Proposez un prix a un client en quelques secondes."
-    />
+    <PageHeader :title="$t('quotes.newQuote')" :subtitle="$t('quotes.createSubtitle')" />
     <QuoteForm @success="onSuccess" />
   </div>
 </template>

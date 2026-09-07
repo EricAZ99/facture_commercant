@@ -19,7 +19,7 @@ async function onSuccess(invoice: Invoice): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Nouvelle facture" subtitle="Creez une facture en quelques secondes." />
+    <PageHeader :title="$t('invoices.newInvoice')" :subtitle="$t('invoices.form.createSubtitle')" />
     <InvoiceForm @success="onSuccess" />
   </div>
 </template>

@@ -33,28 +33,36 @@ function isRefundable(payment: Payment): boolean {
     <table class="w-full text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-          <th class="py-2 pr-4 font-medium">Date</th>
-          <th class="py-2 pr-4 font-medium">Moyen</th>
-          <th class="py-2 pr-4 font-medium">Reference</th>
-          <th class="py-2 pr-4 font-medium">Statut</th>
-          <th class="py-2 pr-4 text-right font-medium">Montant</th>
-          <th v-if="allowRefund" class="py-2 pl-4 text-right font-medium">Actions</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.detail.history.columnDate') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.detail.history.columnMethod') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.detail.history.columnReference') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.detail.history.columnStatus') }}</th>
+          <th class="py-2 pr-4 text-right font-medium">
+            {{ $t('invoices.detail.history.columnAmount') }}
+          </th>
+          <th v-if="allowRefund" class="py-2 pl-4 text-right font-medium">
+            {{ $t('invoices.detail.history.columnActions') }}
+          </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
         <tr v-for="payment in payments" :key="payment.id">
           <td class="py-2 pr-4 text-gray-600">{{ formatDate(payment.paidAt) }}</td>
-          <td class="py-2 pr-4 text-gray-600">{{ PAYMENT_METHOD_LABELS[payment.method] }}</td>
+          <td class="py-2 pr-4 text-gray-600">{{ $t(PAYMENT_METHOD_LABELS[payment.method]) }}</td>
           <td class="py-2 pr-4 text-gray-400">{{ payment.reference || '-' }}</td>
           <td class="py-2 pr-4">
             <BaseBadge :variant="PAYMENT_STATUS_BADGE_VARIANT[payment.status]">
-              {{ PAYMENT_STATUS_LABELS[payment.status] }}
+              {{ $t(PAYMENT_STATUS_LABELS[payment.status]) }}
             </BaseBadge>
           </td>
           <td class="py-2 pr-4 text-right">
             <p class="font-medium text-gray-900">{{ formatCurrency(payment.amount, currency) }}</p>
             <p v-if="(payment.refundedAmount ?? 0) > 0" class="text-xs text-amber-600">
-              Rembourse : {{ formatCurrency(payment.refundedAmount ?? 0, currency) }}
+              {{
+                $t('invoices.detail.history.refunded', {
+                  amount: formatCurrency(payment.refundedAmount ?? 0, currency)
+                })
+              }}
             </p>
           </td>
           <td v-if="allowRefund" class="py-2 pl-4 text-right">
@@ -65,7 +73,7 @@ function isRefundable(payment: Payment): boolean {
               @click="emit('refund', payment)"
             >
               <Undo2 class="size-3.5" aria-hidden="true" />
-              Rembourser
+              {{ $t('invoices.detail.history.refundAction') }}
             </button>
           </td>
         </tr>

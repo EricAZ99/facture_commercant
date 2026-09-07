@@ -25,11 +25,21 @@ const emit = defineEmits<{
     <table class="w-full text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-          <th class="py-2 pr-4 font-medium">Echeance</th>
-          <th class="py-2 pr-4 font-medium">Date</th>
-          <th class="py-2 pr-4 text-right font-medium">Montant</th>
-          <th class="py-2 pr-4 font-medium">Statut</th>
-          <th class="py-2 pl-4 text-right font-medium">Actions</th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.installmentPlan.columnInstallment') }}
+          </th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.installmentPlan.columnDate') }}
+          </th>
+          <th class="py-2 pr-4 text-right font-medium">
+            {{ $t('invoices.detail.installmentPlan.columnAmount') }}
+          </th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.installmentPlan.columnStatus') }}
+          </th>
+          <th class="py-2 pl-4 text-right font-medium">
+            {{ $t('invoices.detail.installmentPlan.columnActions') }}
+          </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -41,7 +51,7 @@ const emit = defineEmits<{
           </td>
           <td class="py-2 pr-4">
             <BaseBadge :variant="INSTALLMENT_STATUS_BADGE_VARIANT[installment.status]">
-              {{ INSTALLMENT_STATUS_LABELS[installment.status] }}
+              {{ $t(INSTALLMENT_STATUS_LABELS[installment.status]) }}
             </BaseBadge>
           </td>
           <td class="py-2 pl-4 text-right">
@@ -53,7 +63,7 @@ const emit = defineEmits<{
               @click="emit('pay', installment)"
             >
               <CircleDollarSign class="size-4" aria-hidden="true" />
-              Encaisser
+              {{ $t('invoices.detail.installmentPlan.collect') }}
             </BaseButton>
           </td>
         </tr>

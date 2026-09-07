@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import BulkActionBar from '@/components/base/BulkActionBar.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import CategoryManagerDialog from '@/components/products/CategoryManagerDialog.vue'
@@ -35,6 +36,7 @@ const {
   isDeleting,
   isExporting,
   isImporting,
+  isBulkDeleting,
   load,
   nextPage,
   prevPage,
@@ -42,6 +44,8 @@ const {
   submitUpdate,
   removeProduct,
   exportProducts,
+  exportSelectedProducts,
+  bulkDeleteProducts,
   importProductsFromCsv
 } = useProducts()
 
@@ -51,6 +55,23 @@ onMounted(() => {
   void load()
   void ensureCategoriesLoaded()
 })
+
+// --- Sélection multiple --------------------------------------------------
+
+const selection = ref<string[]>([])
+
+function clearSelection(): void {
+  selection.value = []
+}
+
+async function onBulkAction(action: string): Promise<void> {
+  if (action === 'export') {
+    await exportSelectedProducts(selection.value)
+  } else if (action === 'delete') {
+    const ok = await bulkDeleteProducts(selection.value)
+    if (ok) clearSelection()
+  }
+}
 
 // --- Import / export ------------------------------------------------------
 
@@ -133,11 +154,11 @@ function viewProduct(product: Product): void {
 
 <template>
   <div>
-    <PageHeader title="Produits" subtitle="Gerez le catalogue de produits et services.">
+    <PageHeader :title="$t('products.title')" :subtitle="$t('products.subtitle')">
       <template #actions>
         <BaseButton variant="outline" :loading="isExporting" @click="exportProducts">
           <Download v-if="!isExporting" class="size-4" aria-hidden="true" />
-          Exporter
+          {{ $t('common.export') }}
         </BaseButton>
         <BaseButton
           v-if="can('product:create')"
@@ -145,7 +166,7 @@ function viewProduct(product: Product): void {
           @click="isImportDialogOpen = true"
         >
           <Upload class="size-4" aria-hidden="true" />
-          Importer
+          {{ $t('products.import') }}
         </BaseButton>
         <BaseButton
           v-if="can('product:create')"
@@ -153,11 +174,11 @@ function viewProduct(product: Product): void {
           @click="isCategoryManagerOpen = true"
         >
           <Settings2 class="size-4" aria-hidden="true" />
-          Categories
+          {{ $t('products.categories') }}
         </BaseButton>
         <BaseButton v-if="can('product:create')" @click="openCreateForm">
           <Plus class="size-4" aria-hidden="true" />
-          Nouveau produit
+          {{ $t('products.newProduct') }}
         </BaseButton>
       </template>
     </PageHeader>
@@ -171,7 +192,7 @@ function viewProduct(product: Product): void {
           <input
             v-model="search"
             type="search"
-            placeholder="Rechercher un produit..."
+            :placeholder="$t('products.searchPlaceholder')"
             class="focus-ring w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
@@ -179,7 +200,7 @@ function viewProduct(product: Product): void {
           v-model="categoryFilter"
           class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         >
-          <option value="">Toutes les categories</option>
+          <option value="">{{ $t('products.allCategories') }}</option>
           <option v-for="option in categoryOptions" :key="option.id" :value="option.id">
             {{ '—'.repeat(option.depth) }} {{ option.label }}
           </option>
@@ -188,7 +209,7 @@ function viewProduct(product: Product): void {
 
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement des produits..."
+        :message="$t('products.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -198,11 +219,11 @@ function viewProduct(product: Product): void {
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="Package"
-        title="Aucun produit"
+        :title="$t('products.emptyTitle')"
         :message="
           search || categoryFilter
-            ? 'Aucun resultat pour cette recherche.'
-            : 'Ajoutez votre premier produit ou service pour commencer.'
+            ? $t('products.emptyMessageSearch')
+            : $t('products.emptyMessageDefault')
         "
       />
 
@@ -210,15 +231,17 @@ function viewProduct(product: Product): void {
         <ProductList
           :products="store.items"
           :currency="currency"
+          :selection="selection"
           @view="viewProduct"
           @edit="openEditForm"
           @delete="askDelete"
+          @update:selection="selection = $event"
         />
 
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} produit(s)</p>
+          <p>{{ $t('products.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -226,7 +249,7 @@ function viewProduct(product: Product): void {
               :disabled="!pagination.hasPrevPage.value"
               @click="prevPage"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ pagination.page.value }} / {{ pagination.totalPages.value }}</span>
             <BaseButton
@@ -235,7 +258,7 @@ function viewProduct(product: Product): void {
               :disabled="!pagination.hasNextPage.value"
               @click="nextPage"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>
@@ -244,7 +267,7 @@ function viewProduct(product: Product): void {
 
     <BaseModal
       :open="isFormOpen"
-      :title="editingProduct ? 'Modifier le produit' : 'Nouveau produit'"
+      :title="editingProduct ? $t('products.editTitle') : $t('products.newProduct')"
       @close="closeForm"
     >
       <ProductForm
@@ -262,13 +285,13 @@ function viewProduct(product: Product): void {
 
     <ConfirmDialog
       :open="productPendingDelete !== null"
-      title="Supprimer le produit"
+      :title="$t('products.confirmDeleteTitle')"
       :message="
         productPendingDelete
-          ? `Voulez-vous vraiment supprimer ${productPendingDelete.name} ? Cette action est irreversible.`
+          ? $t('products.confirmDeleteMessage', { name: productPendingDelete.name })
           : ''
       "
-      confirm-label="Supprimer"
+      :confirm-label="$t('common.delete')"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
@@ -280,6 +303,25 @@ function viewProduct(product: Product): void {
       :submitting="isImporting"
       @import="onImport"
       @close="isImportDialogOpen = false"
+    />
+
+    <BulkActionBar
+      :count="selection.length"
+      :actions="[
+        { label: $t('common.export'), emit: 'export', variant: 'outline', loading: isExporting },
+        ...(can('product:delete')
+          ? [
+              {
+                label: $t('common.delete'),
+                emit: 'delete',
+                variant: 'danger' as const,
+                loading: isBulkDeleting
+              }
+            ]
+          : [])
+      ]"
+      @action="onBulkAction"
+      @clear="clearSelection"
     />
   </div>
 </template>

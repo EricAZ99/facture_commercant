@@ -38,6 +38,7 @@ export function useProducts() {
   const isDeleting = ref(false)
   const isExporting = ref(false)
   const isImporting = ref(false)
+  const isBulkDeleting = ref(false)
 
   async function load(): Promise<void> {
     await store.fetchProducts({
@@ -141,6 +142,42 @@ export function useProducts() {
     }
   }
 
+  /** Exporte en CSV une selection de produits par leurs IDs. */
+  async function exportSelectedProducts(ids: ID[]): Promise<void> {
+    isExporting.value = true
+    try {
+      const response = await productService.list({ page: 1, perPage: 10000 })
+      const selected = response.data.filter((p) => ids.includes(p.id))
+      downloadCsv(
+        `produits-selection-${new Date().toISOString().slice(0, 10)}.csv`,
+        productsToCsv(selected)
+      )
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  /** Supprime plusieurs produits en une seule operation. */
+  async function bulkDeleteProducts(ids: ID[]): Promise<boolean> {
+    isBulkDeleting.value = true
+    try {
+      await productService.deleteMany(ids)
+      toast.success(`${ids.length} produit(s) supprime(s).`)
+      if (store.items.length <= ids.length && pagination.page.value > 1) {
+        pagination.goToPage(pagination.page.value - 1)
+      }
+      await load()
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isBulkDeleting.value = false
+    }
+  }
+
   /** Exporte en CSV tous les produits correspondant a la recherche/au filtre categorie en cours. */
   async function exportProducts(): Promise<void> {
     isExporting.value = true
@@ -201,6 +238,7 @@ export function useProducts() {
     isDeleting,
     isExporting,
     isImporting,
+    isBulkDeleting,
     load,
     goToPage,
     nextPage,
@@ -209,6 +247,8 @@ export function useProducts() {
     submitUpdate,
     removeProduct,
     exportProducts,
+    exportSelectedProducts,
+    bulkDeleteProducts,
     importProductsFromCsv
   }
 }

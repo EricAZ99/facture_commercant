@@ -32,13 +32,13 @@ const emit = defineEmits<{
     <table class="w-full text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-          <th class="py-2 pr-4 font-medium">Numero</th>
-          <th class="py-2 pr-4 font-medium">Client</th>
-          <th class="py-2 pr-4 font-medium">Date</th>
-          <th class="py-2 pr-4 font-medium">Validite</th>
-          <th class="py-2 pr-4 text-right font-medium">Montant</th>
-          <th class="py-2 pr-4 font-medium">Statut</th>
-          <th class="py-2 pl-4 text-right font-medium">Actions</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.list.columnNumber') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.list.columnClient') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.list.columnDate') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('quotes.list.columnValidity') }}</th>
+          <th class="py-2 pr-4 text-right font-medium">{{ $t('invoices.list.columnAmount') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('invoices.list.columnStatus') }}</th>
+          <th class="py-2 pl-4 text-right font-medium">{{ $t('invoices.list.columnActions') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -60,7 +60,7 @@ const emit = defineEmits<{
           </td>
           <td class="py-3 pr-4">
             <BaseBadge :variant="QUOTE_STATUS_BADGE_VARIANT[quote.status]">
-              {{ QUOTE_STATUS_LABELS[quote.status] }}
+              {{ $t(QUOTE_STATUS_LABELS[quote.status]) }}
             </BaseBadge>
           </td>
           <td class="py-3 pl-4">
@@ -68,7 +68,7 @@ const emit = defineEmits<{
               <button
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Consulter le devis"
+                :aria-label="$t('quotes.list.view')"
                 @click="emit('view', quote)"
               >
                 <Eye class="size-4" />
@@ -77,7 +77,7 @@ const emit = defineEmits<{
                 v-if="canEditQuote(quote.status)"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Modifier le devis"
+                :aria-label="$t('quotes.list.edit')"
                 @click="emit('edit', quote)"
               >
                 <Pencil class="size-4" />
@@ -86,8 +86,8 @@ const emit = defineEmits<{
                 v-if="canConvertQuote(quote.status)"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-primary-600"
-                aria-label="Convertir en facture"
-                title="Convertir en facture"
+                :aria-label="$t('quotes.convertToInvoice')"
+                :title="$t('quotes.convertToInvoice')"
                 @click="emit('convert', quote)"
               >
                 <ArrowRightLeft class="size-4" />
@@ -96,7 +96,7 @@ const emit = defineEmits<{
                 v-if="canDeleteQuote(quote.status)"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                aria-label="Supprimer le devis"
+                :aria-label="$t('quotes.list.delete')"
                 @click="emit('remove', quote)"
               >
                 <Trash2 class="size-4" />

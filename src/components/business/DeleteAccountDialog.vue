@@ -32,24 +32,23 @@ function onSubmit(): void {
     <div class="flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
       <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
       <p>
-        Cette action est irreversible. Toutes les donnees du commerce (clients, produits, factures,
-        devis, avoirs, paiements, equipe) seront definitivement supprimees.
+        {{ $t('settingsDeleteAccountDialog.warningText') }}
       </p>
     </div>
 
     <BaseInput
       v-model="input"
-      :label="`Saisissez « ${businessName} » pour confirmer`"
+      :label="$t('settingsDeleteAccountDialog.confirmInputLabel', { name: businessName })"
       :error="serverErrors?.confirmName?.[0]"
       autocomplete="off"
     />
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
       <BaseButton type="submit" variant="danger" :disabled="!isMatching" :loading="submitting">
-        Supprimer definitivement mon compte
+        {{ $t('settingsDeleteAccountDialog.confirmDeleteForever') }}
       </BaseButton>
     </div>
   </form>

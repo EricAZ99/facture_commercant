@@ -10,6 +10,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/states/EmptyState.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
+import UserCredentialsDialog from '@/components/users/UserCredentialsDialog.vue'
 import UserForm from '@/components/users/UserForm.vue'
 import UserList from '@/components/users/UserList.vue'
 import UserPermissionsDialog from '@/components/users/UserPermissionsDialog.vue'
@@ -27,10 +28,14 @@ const {
   isSubmitting,
   isDeleting,
   isUpdatingPermissions,
+  isTogglingActive,
+  isResettingPassword,
+  credentialsToShow,
   load,
   nextPage,
   prevPage,
   submitInvite,
+  resetPassword,
   changeRole,
   toggleActive,
   updatePermissions,
@@ -64,10 +69,63 @@ async function onFormSubmit(payload: CreateUserPayload): Promise<void> {
   closeForm()
 }
 
+// --- Mot de passe (regeneration) ------------------------------------------
+
+const userPendingPasswordReset = ref<User | null>(null)
+
+function onResetPassword(user: User): void {
+  userPendingPasswordReset.value = user
+}
+
+async function confirmResetPassword(): Promise<void> {
+  if (!userPendingPasswordReset.value) return
+  const success = await resetPassword(userPendingPasswordReset.value)
+  if (success) userPendingPasswordReset.value = null
+}
+
+// --- Activation / desactivation ---------------------------------------
+
+const userPendingDeactivation = ref<User | null>(null)
+
+function onToggleActive(user: User): void {
+  // Desactiver coupe immediatement l'acces de l'utilisateur (voir mock-server) :
+  // demande confirmation. Reactiver est sans risque, pas besoin de confirmer.
+  if (user.isActive) {
+    userPendingDeactivation.value = user
+    return
+  }
+  void toggleActive(user)
+}
+
+async function confirmDeactivate(): Promise<void> {
+  if (!userPendingDeactivation.value) return
+  const success = await toggleActive(userPendingDeactivation.value)
+  if (success) userPendingDeactivation.value = null
+}
+
 // --- Role -----------------------------------------------------------------
 
-async function onChangeRole(user: User, role: UserRole): Promise<void> {
-  await changeRole(user, role)
+const userPendingRoleChange = ref<{ user: User; role: UserRole } | null>(null)
+const isChangingRole = ref(false)
+
+function onChangeRole(user: User, role: UserRole): void {
+  userPendingRoleChange.value = { user, role }
+}
+
+async function confirmRoleChange(): Promise<void> {
+  if (!userPendingRoleChange.value) return
+  isChangingRole.value = true
+  try {
+    const { user, role } = userPendingRoleChange.value
+    const success = await changeRole(user, role)
+    if (success) userPendingRoleChange.value = null
+  } finally {
+    isChangingRole.value = false
+  }
+}
+
+function cancelRoleChange(): void {
+  userPendingRoleChange.value = null
 }
 
 // --- Permissions ------------------------------------------------------
@@ -101,11 +159,11 @@ async function confirmDelete(): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Equipe" subtitle="Gerez les utilisateurs de votre commerce.">
+    <PageHeader :title="$t('users.title')" :subtitle="$t('users.subtitle')">
       <template #actions>
         <BaseButton @click="openInviteForm">
           <Plus class="size-4" aria-hidden="true" />
-          Inviter un utilisateur
+          {{ $t('users.invite') }}
         </BaseButton>
       </template>
     </PageHeader>
@@ -119,21 +177,21 @@ async function confirmDelete(): Promise<void> {
           <input
             v-model="search"
             type="search"
-            placeholder="Rechercher un utilisateur..."
+            :placeholder="$t('users.searchPlaceholder')"
             class="focus-ring w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
         <input
           v-model="departmentFilter"
           type="search"
-          placeholder="Filtrer par departement..."
+          :placeholder="$t('users.departmentFilterPlaceholder')"
           class="focus-ring w-full max-w-xs rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
         />
       </div>
 
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement de l'equipe..."
+        :message="$t('users.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -143,28 +201,26 @@ async function confirmDelete(): Promise<void> {
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="UserCog"
-        title="Aucun utilisateur"
-        :message="
-          search
-            ? 'Aucun resultat pour cette recherche.'
-            : 'Invitez votre premier collaborateur pour commencer.'
-        "
+        :title="$t('users.emptyTitle')"
+        :message="search ? $t('users.emptyMessageSearch') : $t('users.emptyMessageDefault')"
       />
 
       <template v-else>
         <UserList
           :users="store.items"
           :current-user-id="authStore.user?.id ?? ''"
+          :pending-role-change="userPendingRoleChange"
           @change-role="onChangeRole"
-          @toggle-active="toggleActive"
+          @toggle-active="onToggleActive"
           @edit-permissions="openPermissionsDialog"
+          @reset-password="onResetPassword"
           @delete="askDelete"
         />
 
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} utilisateur(s)</p>
+          <p>{{ $t('users.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -172,7 +228,7 @@ async function confirmDelete(): Promise<void> {
               :disabled="!pagination.hasPrevPage.value"
               @click="prevPage"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ pagination.page.value }} / {{ pagination.totalPages.value }}</span>
             <BaseButton
@@ -181,14 +237,14 @@ async function confirmDelete(): Promise<void> {
               :disabled="!pagination.hasNextPage.value"
               @click="nextPage"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>
       </template>
     </BaseCard>
 
-    <BaseModal :open="isFormOpen" title="Inviter un utilisateur" @close="closeForm">
+    <BaseModal :open="isFormOpen" :title="$t('users.invite')" @close="closeForm">
       <UserForm
         :submitting="isSubmitting"
         :server-errors="formServerErrors"
@@ -198,8 +254,20 @@ async function confirmDelete(): Promise<void> {
     </BaseModal>
 
     <BaseModal
+      :open="credentialsToShow !== null"
+      :title="$t('users.credentialsModalTitle')"
+      @close="credentialsToShow = null"
+    >
+      <UserCredentialsDialog
+        v-if="credentialsToShow"
+        :user="credentialsToShow"
+        @close="credentialsToShow = null"
+      />
+    </BaseModal>
+
+    <BaseModal
       :open="userEditingPermissions !== null"
-      title="Modifier les permissions"
+      :title="$t('users.editPermissions')"
       @close="userEditingPermissions = null"
     >
       <UserPermissionsDialog
@@ -213,16 +281,70 @@ async function confirmDelete(): Promise<void> {
 
     <ConfirmDialog
       :open="userPendingDelete !== null"
-      title="Supprimer l'utilisateur"
+      :title="$t('users.confirmDeleteTitle')"
       :message="
         userPendingDelete
-          ? `Voulez-vous vraiment supprimer ${userPendingDelete.firstName} ${userPendingDelete.lastName} ? Cette action est irreversible.`
+          ? $t('users.confirmDeleteMessage', {
+              name: `${userPendingDelete.firstName} ${userPendingDelete.lastName}`
+            })
           : ''
       "
-      confirm-label="Supprimer"
+      :confirm-label="$t('common.delete')"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="userPendingDelete = null"
+    />
+
+    <ConfirmDialog
+      :open="userPendingDeactivation !== null"
+      :title="$t('users.confirmDeactivateTitle')"
+      :message="
+        userPendingDeactivation
+          ? $t('users.confirmDeactivateMessage', {
+              name: `${userPendingDeactivation.firstName} ${userPendingDeactivation.lastName}`
+            })
+          : ''
+      "
+      :confirm-label="$t('users.deactivate')"
+      :loading="isTogglingActive"
+      @confirm="confirmDeactivate"
+      @cancel="userPendingDeactivation = null"
+    />
+
+    <ConfirmDialog
+      :open="userPendingRoleChange !== null"
+      :title="$t('users.confirmRoleChangeTitle')"
+      variant="primary"
+      :message="
+        userPendingRoleChange
+          ? $t('users.confirmRoleChangeMessage', {
+              name: `${userPendingRoleChange.user.firstName} ${userPendingRoleChange.user.lastName}`,
+              oldRole: $t(`roles.${userPendingRoleChange.user.role}`),
+              newRole: $t(`roles.${userPendingRoleChange.role}`)
+            })
+          : ''
+      "
+      :confirm-label="$t('users.confirmRoleChangeConfirmLabel')"
+      :loading="isChangingRole"
+      @confirm="confirmRoleChange"
+      @cancel="cancelRoleChange"
+    />
+
+    <ConfirmDialog
+      :open="userPendingPasswordReset !== null"
+      :title="$t('users.resetPassword')"
+      variant="primary"
+      :message="
+        userPendingPasswordReset
+          ? $t('users.confirmResetPasswordMessage', {
+              name: `${userPendingPasswordReset.firstName} ${userPendingPasswordReset.lastName}`
+            })
+          : ''
+      "
+      :confirm-label="$t('users.confirmResetPasswordConfirmLabel')"
+      :loading="isResettingPassword"
+      @confirm="confirmResetPassword"
+      @cancel="userPendingPasswordReset = null"
     />
   </div>
 </template>

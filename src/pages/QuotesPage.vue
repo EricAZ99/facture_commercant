@@ -78,12 +78,12 @@ async function confirmRemove(): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Devis" subtitle="Creez des devis et convertissez-les en factures.">
+    <PageHeader :title="$t('quotes.title')" :subtitle="$t('quotes.subtitle')">
       <template #actions>
         <RouterLink v-if="can('invoice:create')" :to="{ name: ROUTE_NAMES.quoteCreate }">
           <BaseButton>
             <Plus class="size-4" aria-hidden="true" />
-            Nouveau devis
+            {{ $t('quotes.newQuote') }}
           </BaseButton>
         </RouterLink>
       </template>
@@ -105,7 +105,7 @@ async function confirmRemove(): Promise<void> {
 
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement des devis..."
+        :message="$t('quotes.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -115,16 +115,14 @@ async function confirmRemove(): Promise<void> {
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="ClipboardList"
-        title="Aucun devis"
+        :title="$t('quotes.emptyTitle')"
         :message="
-          hasActiveFilters
-            ? 'Aucun resultat pour ces filtres.'
-            : 'Creez votre premier devis pour proposer un prix a un client.'
+          hasActiveFilters ? $t('quotes.emptyMessageFiltered') : $t('quotes.emptyMessageDefault')
         "
       >
         <template #action>
           <RouterLink :to="{ name: ROUTE_NAMES.quoteCreate }">
-            <BaseButton size="sm">Creer un devis</BaseButton>
+            <BaseButton size="sm">{{ $t('quotes.createQuote') }}</BaseButton>
           </RouterLink>
         </template>
       </EmptyState>
@@ -142,7 +140,7 @@ async function confirmRemove(): Promise<void> {
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} devis</p>
+          <p>{{ $t('quotes.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -150,7 +148,7 @@ async function confirmRemove(): Promise<void> {
               :disabled="!pagination.hasPrevPage.value"
               @click="prevPage"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ pagination.page.value }} / {{ pagination.totalPages.value }}</span>
             <BaseButton
@@ -159,7 +157,7 @@ async function confirmRemove(): Promise<void> {
               :disabled="!pagination.hasNextPage.value"
               @click="nextPage"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>
@@ -168,13 +166,13 @@ async function confirmRemove(): Promise<void> {
 
     <ConfirmDialog
       :open="quotePendingRemove !== null"
-      title="Supprimer le devis"
+      :title="$t('quotes.confirmDeleteTitle')"
       :message="
         quotePendingRemove
-          ? `Voulez-vous vraiment supprimer le devis ${quotePendingRemove.number} ? Cette action est irreversible.`
+          ? $t('quotes.confirmDeleteMessage', { number: quotePendingRemove.number })
           : ''
       "
-      confirm-label="Supprimer"
+      :confirm-label="$t('common.delete')"
       :loading="isRemoving"
       @confirm="confirmRemove"
       @cancel="quotePendingRemove = null"

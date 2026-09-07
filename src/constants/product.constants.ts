@@ -2,8 +2,8 @@ import type { ProductType } from '@/types'
 
 /** Libelles affichables des types d'article du catalogue. */
 export const PRODUCT_TYPE_LABELS: Record<ProductType, string> = {
-  product: 'Produit',
-  service: 'Service'
+  product: 'productTypes.product',
+  service: 'productTypes.service'
 }
 
 /** Taille maximale acceptee pour la photo d'un produit (en octets). */

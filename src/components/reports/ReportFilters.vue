@@ -60,7 +60,7 @@ async function searchClients(query: string): Promise<Client[]> {
         :get-label="productLabel"
         :get-key="(p: Product) => p.id"
         :selected="selectedProduct"
-        placeholder="Filtrer par produit..."
+        :placeholder="$t('reports.filters.productPlaceholder')"
         @select="(p: Product) => emit('selectProduct', p)"
         @clear="emit('clearProduct')"
       />
@@ -69,7 +69,7 @@ async function searchClients(query: string): Promise<Client[]> {
         :get-label="clientLabel"
         :get-key="(c: Client) => c.id"
         :selected="selectedClient"
-        placeholder="Filtrer par client..."
+        :placeholder="$t('reports.filters.clientPlaceholder')"
         @select="(c: Client) => emit('selectClient', c)"
         @clear="emit('clearClient')"
       />
@@ -80,9 +80,9 @@ async function searchClients(query: string): Promise<Client[]> {
           emit('update:status', ($event.target as HTMLSelectElement).value as InvoiceStatus | '')
         "
       >
-        <option value="">Tous les statuts</option>
+        <option value="">{{ $t('invoices.filters.allStatuses') }}</option>
         <option v-for="(label, value) in INVOICE_STATUS_LABELS" :key="value" :value="value">
-          {{ label }}
+          {{ $t(label) }}
         </option>
       </select>
       <button
@@ -91,7 +91,7 @@ async function searchClients(query: string): Promise<Client[]> {
         @click="emit('reset')"
       >
         <RotateCcw class="size-4" aria-hidden="true" />
-        Reinitialiser
+        {{ $t('quotes.filters.resetLabel') }}
       </button>
     </div>
   </div>

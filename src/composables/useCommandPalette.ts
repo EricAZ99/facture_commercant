@@ -1,5 +1,6 @@
 import { FilePlus, type LucideIcon } from 'lucide-vue-next'
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import { NAV_ITEMS, ROUTE_NAMES } from '@/constants'
@@ -28,6 +29,7 @@ const MAX_RESULTS_PER_ENTITY = 5
 export function useCommandPalette() {
   const router = useRouter()
   const { can } = usePermissions()
+  const { t } = useI18n()
 
   const isOpen = ref(false)
   const query = ref('')
@@ -55,7 +57,7 @@ export function useCommandPalette() {
   const navCommands = computed<CommandResult[]>(() =>
     NAV_ITEMS.filter((item) => !item.permission || can(item.permission)).map((item) => ({
       id: `nav-${item.routeName}`,
-      label: item.label,
+      label: t(item.labelKey),
       icon: item.icon,
       action: () => router.push({ name: item.routeName })
     }))
@@ -66,13 +68,13 @@ export function useCommandPalette() {
     if (can('invoice:create')) {
       actions.push({
         id: 'action-new-invoice',
-        label: 'Nouvelle facture',
+        label: t('commandPalette.newInvoice'),
         icon: FilePlus,
         action: () => router.push({ name: ROUTE_NAMES.invoiceCreate })
       })
       actions.push({
         id: 'action-new-quote',
-        label: 'Nouveau devis',
+        label: t('commandPalette.newQuote'),
         icon: FilePlus,
         action: () => router.push({ name: ROUTE_NAMES.quoteCreate })
       })
@@ -126,21 +128,23 @@ export function useCommandPalette() {
     const clientResults: CommandResult[] = entityResults.clients.map((client) => ({
       id: `client-${client.id}`,
       label: `${client.firstName} ${client.lastName}`,
-      sublabel: 'Client',
+      sublabel: t('commandPalette.client'),
       icon: NAV_ITEMS.find((n) => n.routeName === ROUTE_NAMES.clients)!.icon,
       action: () => router.push({ name: ROUTE_NAMES.clientDetail, params: { id: client.id } })
     }))
     const productResults: CommandResult[] = entityResults.products.map((product) => ({
       id: `product-${product.id}`,
       label: product.name,
-      sublabel: 'Produit',
+      sublabel: t('commandPalette.product'),
       icon: NAV_ITEMS.find((n) => n.routeName === ROUTE_NAMES.products)!.icon,
       action: () => router.push({ name: ROUTE_NAMES.productDetail, params: { id: product.id } })
     }))
     const invoiceResults: CommandResult[] = entityResults.invoices.map((invoice) => ({
       id: `invoice-${invoice.id}`,
       label: invoice.number,
-      sublabel: invoice.clientName ? `Facture — ${invoice.clientName}` : 'Facture',
+      sublabel: invoice.clientName
+        ? t('commandPalette.invoiceWithClient', { client: invoice.clientName })
+        : t('commandPalette.invoice'),
       icon: NAV_ITEMS.find((n) => n.routeName === ROUTE_NAMES.invoices)!.icon,
       action: () => router.push({ name: ROUTE_NAMES.invoiceDetail, params: { id: invoice.id } })
     }))

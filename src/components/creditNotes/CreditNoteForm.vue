@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
@@ -23,6 +24,8 @@ const emit = defineEmits<{
   submit: [payload: CreateCreditNotePayload]
   cancel: []
 }>()
+
+const { t } = useI18n()
 
 /** Quantite a crediter par ligne de la facture, saisie par l'utilisateur (0 = ligne exclue). */
 interface CreditRow {
@@ -81,8 +84,10 @@ function fieldError(field: 'items' | 'reason'): string | undefined {
 function validate(): boolean {
   const activeRows = rows.filter((row) => row.quantity > 0)
   localError.items =
-    activeRows.length === 0 ? 'Selectionnez au moins une ligne a crediter.' : undefined
-  localError.reason = reason.value.trim() ? undefined : 'Le motif est requis.'
+    activeRows.length === 0 ? t('invoices.detail.creditNoteForm.itemsRequired') : undefined
+  localError.reason = reason.value.trim()
+    ? undefined
+    : t('invoices.detail.refundForm.reasonRequired')
   return !localError.items && !localError.reason
 }
 
@@ -107,8 +112,7 @@ function onSubmit(): void {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
     <p class="text-sm text-gray-500">
-      Choisissez les quantites a crediter pour chaque ligne de la facture
-      {{ invoice.number }}.
+      {{ $t('invoices.detail.creditNoteForm.intro', { number: invoice.number }) }}
     </p>
 
     <div class="overflow-x-auto rounded-lg border border-gray-200">
@@ -117,10 +121,18 @@ function onSubmit(): void {
           <tr
             class="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500"
           >
-            <th class="py-2 pl-3 pr-2 font-medium">Ligne</th>
-            <th class="py-2 pr-2 text-right font-medium">Qte facturee</th>
-            <th class="py-2 pr-2 text-right font-medium">Qte a crediter</th>
-            <th class="py-2 pr-3 text-right font-medium">Montant</th>
+            <th class="py-2 pl-3 pr-2 font-medium">
+              {{ $t('invoices.detail.creditNoteForm.columnLine') }}
+            </th>
+            <th class="py-2 pr-2 text-right font-medium">
+              {{ $t('invoices.detail.creditNoteForm.columnInvoicedQty') }}
+            </th>
+            <th class="py-2 pr-2 text-right font-medium">
+              {{ $t('invoices.detail.creditNoteForm.columnCreditQty') }}
+            </th>
+            <th class="py-2 pr-3 text-right font-medium">
+              {{ $t('invoices.detail.creditNoteForm.columnAmount') }}
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
@@ -147,13 +159,13 @@ function onSubmit(): void {
     <p v-if="fieldError('items')" class="-mt-2 text-sm text-red-600">{{ fieldError('items') }}</p>
 
     <p class="text-right text-sm">
-      Total de l'avoir :
+      {{ $t('invoices.detail.creditNoteForm.totalLabel') }}
       <span class="font-semibold text-gray-900">{{ formatCurrency(total, currency) }}</span>
     </p>
 
     <BaseTextarea
       v-model="reason.value"
-      label="Motif de l'avoir"
+      :label="$t('invoices.detail.creditNoteForm.reasonLabel')"
       :rows="2"
       :error="fieldError('reason')"
       required
@@ -161,9 +173,11 @@ function onSubmit(): void {
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" :loading="submitting">Emettre l'avoir</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('invoices.detail.creditNoteForm.submit')
+      }}</BaseButton>
     </div>
   </form>
 </template>

@@ -444,7 +444,7 @@ async function confirmCancel(): Promise<void> {
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 print:hidden"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
-      Retour aux factures
+      {{ $t('invoices.detail.backToInvoices') }}
     </RouterLink>
 
     <div
@@ -453,12 +453,12 @@ async function confirmCancel(): Promise<void> {
     >
       <span class="flex items-center gap-2">
         <CheckCircle2 class="size-4 shrink-0" aria-hidden="true" />
-        Facture creee avec succes.
+        {{ $t('invoices.detail.createdBanner') }}
       </span>
       <button
         type="button"
         class="rounded p-0.5 text-green-700 hover:text-green-900"
-        aria-label="Fermer"
+        :aria-label="$t('invoices.detail.close')"
         @click="showCreatedBanner = false"
       >
         <X class="size-4" />
@@ -466,8 +466,12 @@ async function confirmCancel(): Promise<void> {
     </div>
 
     <PageHeader
-      :title="invoice ? `Facture ${invoice.number}` : 'Facture'"
-      subtitle="Details de la facture."
+      :title="
+        invoice
+          ? $t('invoices.detail.titleWithNumber', { number: invoice.number })
+          : $t('invoices.detail.fallbackTitle')
+      "
+      :subtitle="$t('invoices.detail.subtitle')"
     >
       <template v-if="invoice && !isEditing" #actions>
         <div class="flex flex-wrap items-center gap-2 print:hidden">
@@ -478,15 +482,15 @@ async function confirmCancel(): Promise<void> {
             @click="openEdit"
           >
             <Pencil class="size-4" aria-hidden="true" />
-            Modifier
+            {{ $t('invoices.detail.edit') }}
           </BaseButton>
           <BaseButton variant="outline" size="sm" :loading="isDownloading" @click="onDownload">
             <Download class="size-4" aria-hidden="true" />
-            Telecharger
+            {{ $t('invoices.list.download') }}
           </BaseButton>
           <BaseButton variant="outline" size="sm" :loading="isPrinting" @click="onPrint">
             <Printer class="size-4" aria-hidden="true" />
-            Imprimer
+            {{ $t('invoices.list.print') }}
           </BaseButton>
 
           <DropdownMenu>
@@ -510,7 +514,7 @@ async function confirmCancel(): Promise<void> {
               @click="onOpenPdf"
             >
               <ExternalLink class="size-4" aria-hidden="true" />
-              Ouvrir le PDF
+              {{ $t('invoices.list.openPdf') }}
             </button>
             <button
               type="button"
@@ -518,7 +522,7 @@ async function confirmCancel(): Promise<void> {
               @click="onDuplicate"
             >
               <Copy class="size-4" aria-hidden="true" />
-              Dupliquer
+              {{ $t('invoices.list.duplicate') }}
             </button>
             <button
               type="button"
@@ -526,7 +530,7 @@ async function confirmCancel(): Promise<void> {
               @click="openShareDialog"
             >
               <Link2 class="size-4" aria-hidden="true" />
-              Lien public / QR code
+              {{ $t('invoices.detail.shareLink') }}
             </button>
             <button
               type="button"
@@ -534,7 +538,7 @@ async function confirmCancel(): Promise<void> {
               @click="onShare"
             >
               <Share2 class="size-4" aria-hidden="true" />
-              Partager
+              {{ $t('invoices.list.share') }}
             </button>
             <button
               type="button"
@@ -542,7 +546,7 @@ async function confirmCancel(): Promise<void> {
               @click="onSendEmail"
             >
               <Mail class="size-4" aria-hidden="true" />
-              Envoyer par email
+              {{ $t('invoices.list.sendEmail') }}
             </button>
             <button
               type="button"
@@ -550,7 +554,7 @@ async function confirmCancel(): Promise<void> {
               @click="onSendWhatsApp"
             >
               <MessageCircle class="size-4" aria-hidden="true" />
-              Envoyer par WhatsApp
+              {{ $t('invoices.list.sendWhatsApp') }}
             </button>
             <button
               v-if="canSendReminder"
@@ -559,7 +563,7 @@ async function confirmCancel(): Promise<void> {
               @click="onSendReminder"
             >
               <BellRing class="size-4" aria-hidden="true" />
-              Envoyer un rappel
+              {{ $t('invoices.detail.sendReminder') }}
             </button>
             <button
               v-if="canCancelInvoice(invoice.status)"
@@ -568,14 +572,14 @@ async function confirmCancel(): Promise<void> {
               @click="isCancelDialogOpen = true"
             >
               <Ban class="size-4" aria-hidden="true" />
-              Annuler
+              {{ $t('invoices.list.cancel') }}
             </button>
           </DropdownMenu>
         </div>
       </template>
     </PageHeader>
 
-    <LoadingState v-if="isLoading" message="Chargement de la facture..." />
+    <LoadingState v-if="isLoading" :message="$t('invoices.detail.loading')" />
     <ErrorState v-else-if="isError" :message="error?.message" @retry="() => execute(props.id)" />
 
     <InvoiceForm
@@ -588,26 +592,26 @@ async function confirmCancel(): Promise<void> {
 
     <div v-else-if="invoice" class="flex flex-col gap-6">
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <BaseCard title="Informations">
+        <BaseCard :title="$t('invoices.detail.infoTitle')">
           <dl class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <dt class="text-gray-500">Statut</dt>
+              <dt class="text-gray-500">{{ $t('invoices.list.columnStatus') }}</dt>
               <dd>
                 <BaseBadge :variant="INVOICE_STATUS_BADGE_VARIANT[invoice.status]">
-                  {{ INVOICE_STATUS_LABELS[invoice.status] }}
+                  {{ $t(INVOICE_STATUS_LABELS[invoice.status]) }}
                 </BaseBadge>
               </dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Client</dt>
+              <dt class="text-gray-500">{{ $t('invoices.list.columnClient') }}</dt>
               <dd class="font-medium text-gray-900">{{ invoice.clientName || '-' }}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Date d'emission</dt>
+              <dt class="text-gray-500">{{ $t('invoices.form.issueDateLabel') }}</dt>
               <dd class="text-gray-900">{{ formatDate(invoice.issueDate) }}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Date d'echeance</dt>
+              <dt class="text-gray-500">{{ $t('invoices.form.dueDateLabel') }}</dt>
               <dd class="text-gray-900">{{ formatDate(invoice.dueDate) }}</dd>
             </div>
             <div
@@ -627,13 +631,13 @@ async function confirmCancel(): Promise<void> {
             class="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 print:hidden"
           >
             <p class="mb-1 text-xs font-semibold uppercase tracking-wide">
-              Notes internes (equipe uniquement)
+              {{ $t('invoices.detail.internalNotesLabel') }}
             </p>
             {{ invoice.internalNotes }}
           </div>
         </BaseCard>
 
-        <BaseCard title="Recapitulatif">
+        <BaseCard :title="$t('invoices.form.summarySectionTitle')">
           <InvoiceSummary
             v-if="totals"
             :totals="totals"
@@ -644,16 +648,24 @@ async function confirmCancel(): Promise<void> {
         </BaseCard>
       </div>
 
-      <BaseCard title="Articles">
+      <BaseCard :title="$t('invoices.detail.itemsTitle')">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead>
               <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                <th class="py-2 pr-4 font-medium">Description</th>
-                <th class="py-2 pr-4 text-right font-medium">Qte</th>
-                <th class="py-2 pr-4 text-right font-medium">Prix</th>
-                <th class="py-2 pr-4 text-right font-medium">TVA</th>
-                <th class="py-2 pl-4 text-right font-medium">Total</th>
+                <th class="py-2 pr-4 font-medium">{{ $t('invoices.form.columnDescription') }}</th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.form.columnQuantity') }}
+                </th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.form.columnPrice') }}
+                </th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.detail.columnTax') }}
+                </th>
+                <th class="py-2 pl-4 text-right font-medium">
+                  {{ $t('invoices.form.columnLineTotal') }}
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -673,23 +685,23 @@ async function confirmCancel(): Promise<void> {
         </div>
       </BaseCard>
 
-      <BaseCard title="Paiement">
+      <BaseCard :title="$t('invoices.detail.paymentTitle')">
         <template v-if="canRegisterPayment" #actions>
           <BaseButton size="sm" class="print:hidden" @click="openPaymentForm">
             <Plus class="size-4" aria-hidden="true" />
-            Enregistrer un paiement
+            {{ $t('invoices.detail.registerPayment') }}
           </BaseButton>
         </template>
 
         <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <p class="text-xs text-gray-500">Montant paye</p>
+            <p class="text-xs text-gray-500">{{ $t('invoices.detail.amountPaidLabel') }}</p>
             <p class="text-lg font-semibold text-gray-900">
               {{ formatCurrency(invoice.amountPaid, currency) }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">Solde restant</p>
+            <p class="text-xs text-gray-500">{{ $t('invoices.detail.balanceLabel') }}</p>
             <p
               class="text-lg font-semibold"
               :class="balance > 0 ? 'text-amber-600' : 'text-gray-900'"
@@ -698,9 +710,9 @@ async function confirmCancel(): Promise<void> {
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">Statut de paiement</p>
+            <p class="text-xs text-gray-500">{{ $t('invoices.detail.paymentStatusLabel') }}</p>
             <BaseBadge :variant="INVOICE_PAYMENT_STATUS_BADGE_VARIANT[paymentStatus]">
-              {{ INVOICE_PAYMENT_STATUS_LABELS[paymentStatus] }}
+              {{ $t(INVOICE_PAYMENT_STATUS_LABELS[paymentStatus]) }}
             </BaseBadge>
           </div>
         </div>
@@ -710,12 +722,16 @@ async function confirmCancel(): Promise<void> {
           class="mb-6 flex items-center gap-1.5 text-xs text-gray-500 print:hidden"
         >
           <BellRing class="size-3.5 shrink-0" aria-hidden="true" />
-          Dernier rappel envoye le {{ formatDateTime(invoice.lastReminderSentAt) }}
+          {{
+            $t('invoices.detail.lastReminderSent', {
+              date: formatDateTime(invoice.lastReminderSentAt)
+            })
+          }}
         </p>
 
         <LoadingState
           v-if="isLoadingPayments && payments.length === 0"
-          message="Chargement des paiements..."
+          :message="$t('invoices.detail.loadingPayments')"
         />
         <ErrorState
           v-else-if="paymentsError && payments.length === 0"
@@ -725,8 +741,8 @@ async function confirmCancel(): Promise<void> {
         <EmptyState
           v-else-if="payments.length === 0"
           :icon="Wallet"
-          title="Aucun paiement"
-          message="Aucun paiement n'a encore ete enregistre pour cette facture."
+          :title="$t('invoices.detail.noPaymentsTitle')"
+          :message="$t('invoices.detail.noPaymentsMessage')"
         />
         <PaymentHistory
           v-else
@@ -737,7 +753,7 @@ async function confirmCancel(): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard title="Echeancier de paiement">
+      <BaseCard :title="$t('invoices.detail.installmentPlanTitle')">
         <template v-if="canCreateInstallmentPlan" #actions>
           <BaseButton
             size="sm"
@@ -746,19 +762,19 @@ async function confirmCancel(): Promise<void> {
             @click="openInstallmentPlanForm"
           >
             <CalendarClock class="size-4" aria-hidden="true" />
-            Creer un echeancier
+            {{ $t('invoices.detail.createInstallmentPlan') }}
           </BaseButton>
         </template>
 
         <LoadingState
           v-if="isLoadingInstallmentPlan && !installmentPlan"
-          message="Chargement de l'echeancier..."
+          :message="$t('invoices.detail.loadingInstallmentPlan')"
         />
         <EmptyState
           v-else-if="!installmentPlan"
           :icon="CalendarClock"
-          title="Aucun echeancier"
-          message="Repartissez le solde restant de cette facture en plusieurs echeances."
+          :title="$t('invoices.detail.noInstallmentPlanTitle')"
+          :message="$t('invoices.detail.noInstallmentPlanMessage')"
         />
         <InstallmentPlanCard
           v-else
@@ -769,17 +785,17 @@ async function confirmCancel(): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard title="Avoirs">
+      <BaseCard :title="$t('invoices.detail.creditNotesTitle')">
         <template v-if="canIssueCreditNote" #actions>
           <BaseButton size="sm" variant="outline" class="print:hidden" @click="openCreditNoteForm">
             <FileMinus class="size-4" aria-hidden="true" />
-            Emettre un avoir
+            {{ $t('invoices.detail.issueCreditNote') }}
           </BaseButton>
         </template>
 
         <LoadingState
           v-if="isLoadingCreditNotes && creditNotes.length === 0"
-          message="Chargement des avoirs..."
+          :message="$t('invoices.detail.loadingCreditNotes')"
         />
         <ErrorState
           v-else-if="creditNotesError && creditNotes.length === 0"
@@ -789,8 +805,8 @@ async function confirmCancel(): Promise<void> {
         <EmptyState
           v-else-if="creditNotes.length === 0"
           :icon="FileMinus"
-          title="Aucun avoir"
-          message="Aucun avoir n'a encore ete emis pour cette facture."
+          :title="$t('invoices.detail.noCreditNotesTitle')"
+          :message="$t('invoices.detail.noCreditNotesMessage')"
         />
         <CreditNoteList
           v-else
@@ -800,10 +816,10 @@ async function confirmCancel(): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard title="Pieces jointes" class="print:hidden">
+      <BaseCard :title="$t('invoices.detail.attachmentsTitle')" class="print:hidden">
         <LoadingState
           v-if="isLoadingAttachments && attachments.length === 0"
-          message="Chargement des pieces jointes..."
+          :message="$t('invoices.detail.loadingAttachments')"
         />
         <InvoiceAttachments
           v-else
@@ -818,7 +834,7 @@ async function confirmCancel(): Promise<void> {
 
     <BaseModal
       :open="isPaymentFormOpen"
-      title="Enregistrer un paiement"
+      :title="$t('invoices.detail.registerPayment')"
       @close="isPaymentFormOpen = false"
     >
       <PaymentForm
@@ -834,7 +850,7 @@ async function confirmCancel(): Promise<void> {
 
     <BaseModal
       :open="refundingPayment !== null"
-      title="Rembourser le paiement"
+      :title="$t('invoices.detail.refundPaymentModalTitle')"
       @close="refundingPayment = null"
     >
       <RefundForm
@@ -850,7 +866,7 @@ async function confirmCancel(): Promise<void> {
 
     <BaseModal
       :open="isInstallmentPlanFormOpen"
-      title="Creer un echeancier de paiement"
+      :title="$t('invoices.detail.createInstallmentPlanModalTitle')"
       @close="isInstallmentPlanFormOpen = false"
     >
       <InstallmentPlanCreateForm
@@ -866,7 +882,7 @@ async function confirmCancel(): Promise<void> {
 
     <BaseModal
       :open="payingInstallment !== null"
-      title="Encaisser l'echeance"
+      :title="$t('invoices.detail.payInstallmentModalTitle')"
       @close="payingInstallment = null"
     >
       <InstallmentPayForm
@@ -881,7 +897,7 @@ async function confirmCancel(): Promise<void> {
 
     <BaseModal
       :open="isCreditNoteFormOpen"
-      title="Emettre un avoir"
+      :title="$t('invoices.detail.issueCreditNote')"
       @close="isCreditNoteFormOpen = false"
     >
       <CreditNoteForm
@@ -897,13 +913,9 @@ async function confirmCancel(): Promise<void> {
 
     <ConfirmDialog
       :open="isCancelDialogOpen"
-      title="Annuler la facture"
-      :message="
-        invoice
-          ? `Voulez-vous vraiment annuler la facture ${invoice.number} ? Cette action est irreversible.`
-          : ''
-      "
-      confirm-label="Annuler la facture"
+      :title="$t('invoices.confirmCancelTitle')"
+      :message="invoice ? $t('invoices.confirmCancelMessage', { number: invoice.number }) : ''"
+      :confirm-label="$t('invoices.confirmCancelTitle')"
       :loading="isCancelling"
       @confirm="confirmCancel"
       @cancel="isCancelDialogOpen = false"

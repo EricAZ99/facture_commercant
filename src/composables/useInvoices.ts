@@ -71,6 +71,8 @@ export function useInvoiceActions() {
   const isSendingEmail = ref(false)
   const isSendingWhatsApp = ref(false)
   const isSendingReminder = ref(false)
+  const isBulkDownloading = ref(false)
+  const isBulkCancelling = ref(false)
 
   function currency(): string {
     return authStore.business?.currency ?? 'XOF'
@@ -219,6 +221,41 @@ export function useInvoiceActions() {
     }
   }
 
+  /** Telecharge les PDFs de plusieurs factures en sequence. */
+  async function bulkDownloadInvoices(invoices: Invoice[]): Promise<void> {
+    isBulkDownloading.value = true
+    try {
+      for (const invoice of invoices) {
+        await invoiceActions.downloadInvoicePdf(invoice)
+      }
+      toast.success(`${invoices.length} facture(s) telechargee(s).`)
+    } catch (err) {
+      toast.error(documentErrorMessage(err))
+    } finally {
+      isBulkDownloading.value = false
+    }
+  }
+
+  /** Annule plusieurs factures en sequence (uniquement celles annulables). */
+  async function bulkCancelInvoices(invoices: Invoice[]): Promise<number> {
+    isBulkCancelling.value = true
+    let cancelled = 0
+    try {
+      for (const invoice of invoices) {
+        try {
+          await store.updateInvoice(invoice.id, { status: 'cancelled' })
+          cancelled++
+        } catch {
+          // continue les autres
+        }
+      }
+      if (cancelled > 0) toast.success(`${cancelled} facture(s) annulee(s).`)
+    } finally {
+      isBulkCancelling.value = false
+    }
+    return cancelled
+  }
+
   return {
     isCancelling,
     isDuplicating,
@@ -229,6 +266,8 @@ export function useInvoiceActions() {
     isSendingEmail,
     isSendingWhatsApp,
     isSendingReminder,
+    isBulkDownloading,
+    isBulkCancelling,
     cancelInvoice,
     duplicateInvoice,
     downloadInvoice,
@@ -237,7 +276,9 @@ export function useInvoiceActions() {
     shareInvoice,
     sendInvoiceByEmail,
     sendInvoiceByWhatsApp,
-    sendReminder
+    sendReminder,
+    bulkDownloadInvoices,
+    bulkCancelInvoices
   }
 }
 

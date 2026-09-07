@@ -2,7 +2,13 @@ import { ref } from 'vue'
 
 import { authService, userService } from '@/services'
 import { useAuthStore } from '@/stores'
-import type { ApiError, ChangeEmailPayload, UserDataExport, UserLoginHistoryEntry } from '@/types'
+import type {
+  ApiError,
+  ChangeEmailPayload,
+  ChangePasswordPayload,
+  UserDataExport,
+  UserLoginHistoryEntry
+} from '@/types'
 import { downloadBlob } from '@/utils/download'
 
 import { useToast } from './useToast'
@@ -18,6 +24,7 @@ export function useMyAccount() {
 
   const isUploadingAvatar = ref(false)
   const isChangingEmail = ref(false)
+  const isChangingPassword = ref(false)
   const isExporting = ref(false)
   const isDeleting = ref(false)
 
@@ -65,6 +72,21 @@ export function useMyAccount() {
     }
   }
 
+  async function submitChangePassword(payload: ChangePasswordPayload): Promise<ApiError | null> {
+    isChangingPassword.value = true
+    try {
+      await authService.changePassword(payload)
+      toast.success('Mot de passe mis a jour avec succes.')
+      return null
+    } catch (err) {
+      const apiError = err as ApiError
+      toast.error(apiError.message)
+      return apiError
+    } finally {
+      isChangingPassword.value = false
+    }
+  }
+
   /** Telecharge une copie de mes donnees personnelles au format JSON (droit a l'oubli / RGPD). */
   async function exportMyData(): Promise<void> {
     isExporting.value = true
@@ -99,6 +121,7 @@ export function useMyAccount() {
   return {
     isUploadingAvatar,
     isChangingEmail,
+    isChangingPassword,
     isExporting,
     isDeleting,
     loginHistory,
@@ -106,6 +129,7 @@ export function useMyAccount() {
     loadLoginHistory,
     submitAvatar,
     submitChangeEmail,
+    submitChangePassword,
     exportMyData,
     removeMyAccount
   }

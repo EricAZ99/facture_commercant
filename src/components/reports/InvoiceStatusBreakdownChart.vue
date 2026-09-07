@@ -33,7 +33,7 @@ const segments = computed(() =>
         :key="segment.status"
         :class="INVOICE_STATUS_COLORS[segment.status]"
         :style="{ width: `${segment.percentage}%` }"
-        :title="`${INVOICE_STATUS_LABELS[segment.status]}: ${segment.count}`"
+        :title="`${$t(INVOICE_STATUS_LABELS[segment.status])}: ${segment.count}`"
       />
     </div>
 
@@ -45,7 +45,7 @@ const segments = computed(() =>
       >
         <span class="flex items-center gap-2 text-gray-600">
           <span class="size-2.5 rounded-full" :class="INVOICE_STATUS_COLORS[segment.status]" />
-          {{ INVOICE_STATUS_LABELS[segment.status] }}
+          {{ $t(INVOICE_STATUS_LABELS[segment.status]) }}
         </span>
         <span class="font-medium text-gray-900">
           {{ formatNumber(segment.count) }}

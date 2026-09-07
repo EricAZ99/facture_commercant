@@ -41,7 +41,7 @@ async function searchClients(query: string): Promise<Client[]> {
       <input
         :value="search"
         type="search"
-        placeholder="Rechercher par numero ou client..."
+        :placeholder="$t('invoices.filters.searchPlaceholder')"
         class="focus-ring w-full max-w-sm rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
         @input="emit('update:search', ($event.target as HTMLInputElement).value)"
       />
@@ -50,15 +50,15 @@ async function searchClients(query: string): Promise<Client[]> {
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <select
         :value="status"
-        aria-label="Filtrer par statut"
+        :aria-label="$t('invoices.filters.statusLabel')"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         @change="
           emit('update:status', ($event.target as HTMLSelectElement).value as QuoteStatus | '')
         "
       >
-        <option value="">Tous les statuts</option>
+        <option value="">{{ $t('invoices.filters.allStatuses') }}</option>
         <option v-for="(label, value) in QUOTE_STATUS_LABELS" :key="value" :value="value">
-          {{ label }}
+          {{ $t(label) }}
         </option>
       </select>
 
@@ -68,7 +68,7 @@ async function searchClients(query: string): Promise<Client[]> {
           :get-label="clientLabel"
           :get-key="(c: Client) => c.id"
           :selected="selectedClient"
-          placeholder="Client..."
+          :placeholder="$t('invoices.filters.clientPlaceholder')"
           @select="(c: Client) => emit('selectClient', c)"
           @clear="emit('clearClient')"
         />
@@ -80,7 +80,7 @@ async function searchClients(query: string): Promise<Client[]> {
         @click="emit('reset')"
       >
         <RotateCcw class="size-4" />
-        Reinitialiser
+        {{ $t('quotes.filters.resetLabel') }}
       </button>
     </div>
   </div>

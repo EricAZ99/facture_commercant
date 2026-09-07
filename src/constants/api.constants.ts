@@ -21,6 +21,7 @@ export const API_ENDPOINTS = {
   users: {
     base: '/users',
     byId: (id: string) => `/users/${id}`,
+    resetPassword: (id: string) => `/users/${id}/reset-password`,
     meLoginHistory: '/users/me/login-history',
     meExport: '/users/me/export',
     meAvatar: '/users/me/avatar',
@@ -37,7 +38,8 @@ export const API_ENDPOINTS = {
     base: '/clients',
     byId: (id: string) => `/clients/${id}`,
     import: '/clients/import',
-    merge: '/clients/merge'
+    merge: '/clients/merge',
+    deleteMany: '/clients/bulk-delete'
   },
   products: {
     base: '/products',
@@ -45,7 +47,8 @@ export const API_ENDPOINTS = {
     image: (id: string) => `/products/${id}/image`,
     stockMovements: (id: string) => `/products/${id}/stock-movements`,
     stockAdjust: (id: string) => `/products/${id}/stock-adjust`,
-    import: '/products/import'
+    import: '/products/import',
+    deleteMany: '/products/bulk-delete'
   },
   productCategories: {
     base: '/product-categories',

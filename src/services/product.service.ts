@@ -92,5 +92,10 @@ export const productService = {
       { products }
     )
     return data.data
+  },
+
+  /** Supprime plusieurs produits en une seule requete. */
+  async deleteMany(ids: ID[]): Promise<void> {
+    await apiClient.post(API_ENDPOINTS.products.deleteMany, { ids })
   }
 }

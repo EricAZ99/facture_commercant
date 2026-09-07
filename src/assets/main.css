@@ -31,6 +31,242 @@
   html.a11y-high-contrast .border-gray-200 {
     @apply border-gray-400;
   }
+
+  /*
+   * Theme sombre — espace commercant uniquement (voir `App.vue`, classe
+   * `commerce-scope` posee sur `<body>`, jamais sur l'espace admin qui a sa
+   * propre identite visuelle sombre fixe et independante du theme).
+   *
+   * Volontairement PAS des variantes `dark:` ajoutees composant par
+   * composant (100+ fichiers) : cette surcouche re-associe directement les
+   * classes Tailwind claires deja utilisees a des equivalents sombres,
+   * de facon uniforme et centralisee. `@media screen` exclut l'impression
+   * (toujours en clair). Declarations directes (`theme()`, pas `@apply`) :
+   * `@apply` declenche une fausse detection de dependance circulaire des que
+   * la classe source d'une regle est aussi la classe cible d'une autre.
+   * Chaque regle a une specificite (au moins `html.dark body.commerce-scope
+   * :is(.x)`) largement superieure a la classe Tailwind d'origine (`.x`),
+   * donc gagne sans `!important`.
+   */
+  @media screen {
+    html.dark body.commerce-scope {
+      background-color: theme('colors.gray.950');
+      color: theme('colors.gray.100');
+      color-scheme: dark;
+    }
+
+    /* Arrondi/plan : canevas (950) < mise en avant discrete (900) < carte (800). */
+    html.dark body.commerce-scope :is(.bg-white) {
+      background-color: theme('colors.gray.800');
+    }
+    html.dark body.commerce-scope :is(.bg-gray-50) {
+      background-color: theme('colors.gray.900');
+    }
+    html.dark body.commerce-scope :is(.bg-gray-100, .bg-gray-200) {
+      background-color: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.hover\:bg-gray-50, .hover\:bg-gray-100):hover {
+      background-color: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.hover\:bg-gray-200):hover {
+      background-color: theme('colors.gray.600');
+    }
+
+    html.dark body.commerce-scope :is(.bg-primary-50) {
+      background-color: theme('colors.primary.950');
+    }
+    html.dark body.commerce-scope :is(.bg-primary-100) {
+      background-color: theme('colors.primary.900');
+    }
+    html.dark body.commerce-scope :is(.hover\:bg-primary-700):hover {
+      background-color: theme('colors.primary.600');
+    }
+
+    html.dark body.commerce-scope :is(.bg-red-50) {
+      background-color: theme('colors.red.950');
+    }
+    html.dark body.commerce-scope :is(.bg-red-100) {
+      background-color: theme('colors.red.900');
+    }
+    html.dark body.commerce-scope :is(.hover\:bg-red-50):hover {
+      background-color: theme('colors.red.950');
+    }
+    html.dark body.commerce-scope :is(.hover\:bg-red-700):hover {
+      background-color: theme('colors.red.600');
+    }
+    html.dark body.commerce-scope :is(.bg-green-50) {
+      background-color: theme('colors.green.950');
+    }
+    html.dark body.commerce-scope :is(.bg-green-100) {
+      background-color: theme('colors.green.900');
+    }
+    html.dark body.commerce-scope :is(.bg-amber-50) {
+      background-color: theme('colors.amber.950');
+    }
+    html.dark body.commerce-scope :is(.bg-amber-100) {
+      background-color: theme('colors.amber.900');
+    }
+    html.dark body.commerce-scope :is(.bg-blue-50) {
+      background-color: theme('colors.blue.950');
+    }
+    html.dark body.commerce-scope :is(.bg-blue-100) {
+      background-color: theme('colors.blue.900');
+    }
+
+    /* Texte */
+    html.dark body.commerce-scope :is(.text-gray-900, .text-gray-800) {
+      color: theme('colors.gray.100');
+    }
+    html.dark body.commerce-scope :is(.text-gray-700) {
+      color: theme('colors.gray.300');
+    }
+    html.dark body.commerce-scope :is(.text-gray-600, .text-gray-500) {
+      color: theme('colors.gray.400');
+    }
+    html.dark body.commerce-scope :is(.text-gray-400) {
+      color: theme('colors.gray.500');
+    }
+    html.dark body.commerce-scope :is(.text-gray-300, .text-gray-200) {
+      color: theme('colors.gray.600');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-gray-900, .hover\:text-gray-700):hover {
+      color: theme('colors.gray.100');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-gray-600):hover {
+      color: theme('colors.gray.300');
+    }
+    html.dark body.commerce-scope :is(.placeholder\:text-gray-400)::placeholder {
+      color: theme('colors.gray.500');
+    }
+    html.dark body.commerce-scope :is(.placeholder\:text-gray-500)::placeholder {
+      color: theme('colors.gray.500');
+    }
+
+    html.dark body.commerce-scope :is(.text-primary-600) {
+      color: theme('colors.primary.400');
+    }
+    html.dark body.commerce-scope :is(.text-primary-700, .text-primary-800) {
+      color: theme('colors.primary.300');
+    }
+    html.dark body.commerce-scope :is(.text-primary-900) {
+      color: theme('colors.primary.200');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-primary-700, .hover\:text-primary-900):hover {
+      color: theme('colors.primary.300');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-primary-600):hover {
+      color: theme('colors.primary.400');
+    }
+
+    html.dark body.commerce-scope :is(.text-red-500, .text-red-600) {
+      color: theme('colors.red.400');
+    }
+    html.dark body.commerce-scope :is(.text-red-700, .text-red-800) {
+      color: theme('colors.red.300');
+    }
+    html.dark body.commerce-scope :is(.text-red-900) {
+      color: theme('colors.red.200');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-red-600):hover {
+      color: theme('colors.red.400');
+    }
+
+    html.dark body.commerce-scope :is(.text-green-500, .text-green-600) {
+      color: theme('colors.green.400');
+    }
+    html.dark body.commerce-scope :is(.text-green-700, .text-green-800) {
+      color: theme('colors.green.300');
+    }
+    html.dark body.commerce-scope :is(.text-green-900) {
+      color: theme('colors.green.200');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-green-900):hover {
+      color: theme('colors.green.300');
+    }
+
+    html.dark body.commerce-scope :is(.text-amber-500, .text-amber-600) {
+      color: theme('colors.amber.400');
+    }
+    html.dark body.commerce-scope :is(.text-amber-700, .text-amber-800) {
+      color: theme('colors.amber.300');
+    }
+    html.dark body.commerce-scope :is(.text-amber-900, .text-amber-950) {
+      color: theme('colors.amber.200');
+    }
+    html.dark body.commerce-scope :is(.hover\:text-amber-950):hover {
+      color: theme('colors.amber.200');
+    }
+
+    html.dark body.commerce-scope :is(.text-blue-700, .text-blue-800) {
+      color: theme('colors.blue.300');
+    }
+
+    /* Bordures / separateurs / anneaux */
+    html.dark body.commerce-scope :is(.border-gray-100, .border-gray-200) {
+      border-color: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.border-gray-300) {
+      border-color: theme('colors.gray.600');
+    }
+    html.dark body.commerce-scope :is(.border-gray-400) {
+      border-color: theme('colors.gray.500');
+    }
+    html.dark
+      body.commerce-scope
+      :is(.divide-gray-50, .divide-gray-100)
+      > :not([hidden])
+      ~ :not([hidden]) {
+      border-color: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.ring-gray-200) {
+      --tw-ring-color: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.ring-gray-400) {
+      --tw-ring-color: theme('colors.gray.600');
+    }
+
+    html.dark body.commerce-scope :is(.border-red-200) {
+      border-color: theme('colors.red.800');
+    }
+    html.dark body.commerce-scope :is(.border-red-400, .border-red-500) {
+      border-color: theme('colors.red.700');
+    }
+    html.dark body.commerce-scope :is(.border-amber-200) {
+      border-color: theme('colors.amber.800');
+    }
+    html.dark body.commerce-scope :is(.border-amber-300) {
+      border-color: theme('colors.amber.700');
+    }
+    html.dark body.commerce-scope :is(.border-green-200) {
+      border-color: theme('colors.green.800');
+    }
+    html.dark body.commerce-scope :is(.border-blue-200) {
+      border-color: theme('colors.blue.800');
+    }
+    html.dark body.commerce-scope :is(.border-primary-200) {
+      border-color: theme('colors.primary.800');
+    }
+
+    /* Graphiques SVG (voir `RevenueChart.vue`) */
+    html.dark body.commerce-scope :is(.fill-white) {
+      fill: theme('colors.gray.800');
+    }
+    html.dark body.commerce-scope :is(.fill-gray-500) {
+      fill: theme('colors.gray.400');
+    }
+    html.dark body.commerce-scope :is(.stroke-gray-200) {
+      stroke: theme('colors.gray.700');
+    }
+    html.dark body.commerce-scope :is(.stroke-gray-400) {
+      stroke: theme('colors.gray.500');
+    }
+
+    /* Anneau de focus : le decalage (ring-offset) est blanc par defaut,
+       invisible/faux sur un fond sombre. */
+    html.dark body.commerce-scope :is(.focus-ring):focus-visible {
+      --tw-ring-offset-color: theme('colors.gray.900');
+    }
+  }
 }
 
 @layer components {

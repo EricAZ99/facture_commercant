@@ -125,7 +125,7 @@ async function confirmRemove(): Promise<void> {
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700 print:hidden"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
-      Retour aux devis
+      {{ $t('quotes.backToQuotes') }}
     </RouterLink>
 
     <div
@@ -134,19 +134,24 @@ async function confirmRemove(): Promise<void> {
     >
       <span class="flex items-center gap-2">
         <CheckCircle2 class="size-4 shrink-0" aria-hidden="true" />
-        Devis cree avec succes.
+        {{ $t('quotes.createdBanner') }}
       </span>
       <button
         type="button"
         class="rounded p-0.5 text-green-700 hover:text-green-900"
-        aria-label="Fermer"
+        :aria-label="$t('invoices.detail.close')"
         @click="showCreatedBanner = false"
       >
         <X class="size-4" />
       </button>
     </div>
 
-    <PageHeader :title="quote ? `Devis ${quote.number}` : 'Devis'" subtitle="Details du devis.">
+    <PageHeader
+      :title="
+        quote ? $t('quotes.titleWithNumber', { number: quote.number }) : $t('quotes.fallbackTitle')
+      "
+      :subtitle="$t('quotes.detailsSubtitle')"
+    >
       <template v-if="quote && !isEditing" #actions>
         <div class="flex flex-wrap items-center gap-2 print:hidden">
           <BaseButton
@@ -156,7 +161,7 @@ async function confirmRemove(): Promise<void> {
             @click="openEdit"
           >
             <Pencil class="size-4" aria-hidden="true" />
-            Modifier
+            {{ $t('invoices.detail.edit') }}
           </BaseButton>
           <BaseButton
             v-if="canConvertQuote(quote.status)"
@@ -165,11 +170,11 @@ async function confirmRemove(): Promise<void> {
             @click="isConvertDialogOpen = true"
           >
             <ArrowRightLeft class="size-4" aria-hidden="true" />
-            Convertir en facture
+            {{ $t('quotes.convertToInvoice') }}
           </BaseButton>
           <BaseButton variant="outline" size="sm" :loading="isDuplicating" @click="onDuplicate">
             <Copy v-if="!isDuplicating" class="size-4" aria-hidden="true" />
-            Dupliquer
+            {{ $t('invoices.list.duplicate') }}
           </BaseButton>
           <BaseButton
             v-if="canDeleteQuote(quote.status)"
@@ -178,13 +183,13 @@ async function confirmRemove(): Promise<void> {
             @click="isRemoveDialogOpen = true"
           >
             <Trash2 class="size-4" aria-hidden="true" />
-            Supprimer
+            {{ $t('common.delete') }}
           </BaseButton>
         </div>
       </template>
     </PageHeader>
 
-    <LoadingState v-if="isLoading" message="Chargement du devis..." />
+    <LoadingState v-if="isLoading" :message="$t('quotes.detailLoading')" />
     <ErrorState v-else-if="isError" :message="error?.message" @retry="() => execute(props.id)" />
 
     <QuoteForm
@@ -197,26 +202,26 @@ async function confirmRemove(): Promise<void> {
 
     <div v-else-if="quote" class="flex flex-col gap-6">
       <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <BaseCard title="Informations">
+        <BaseCard :title="$t('invoices.detail.infoTitle')">
           <dl class="space-y-2 text-sm">
             <div class="flex justify-between">
-              <dt class="text-gray-500">Statut</dt>
+              <dt class="text-gray-500">{{ $t('invoices.list.columnStatus') }}</dt>
               <dd>
                 <BaseBadge :variant="QUOTE_STATUS_BADGE_VARIANT[quote.status]">
-                  {{ QUOTE_STATUS_LABELS[quote.status] }}
+                  {{ $t(QUOTE_STATUS_LABELS[quote.status]) }}
                 </BaseBadge>
               </dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Client</dt>
+              <dt class="text-gray-500">{{ $t('invoices.list.columnClient') }}</dt>
               <dd class="font-medium text-gray-900">{{ quote.clientName || '-' }}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Date d'emission</dt>
+              <dt class="text-gray-500">{{ $t('invoices.form.issueDateLabel') }}</dt>
               <dd class="text-gray-900">{{ formatDate(quote.issueDate) }}</dd>
             </div>
             <div class="flex justify-between">
-              <dt class="text-gray-500">Valide jusqu'au</dt>
+              <dt class="text-gray-500">{{ $t('quotes.form.expiryDateLabel') }}</dt>
               <dd class="text-gray-900">{{ formatDate(quote.expiryDate) }}</dd>
             </div>
           </dl>
@@ -225,7 +230,7 @@ async function confirmRemove(): Promise<void> {
           </p>
         </BaseCard>
 
-        <BaseCard title="Recapitulatif">
+        <BaseCard :title="$t('invoices.form.summarySectionTitle')">
           <InvoiceSummary
             v-if="totals"
             :totals="totals"
@@ -236,16 +241,24 @@ async function confirmRemove(): Promise<void> {
         </BaseCard>
       </div>
 
-      <BaseCard title="Articles">
+      <BaseCard :title="$t('invoices.detail.itemsTitle')">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm">
             <thead>
               <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                <th class="py-2 pr-4 font-medium">Description</th>
-                <th class="py-2 pr-4 text-right font-medium">Qte</th>
-                <th class="py-2 pr-4 text-right font-medium">Prix</th>
-                <th class="py-2 pr-4 text-right font-medium">TVA</th>
-                <th class="py-2 pl-4 text-right font-medium">Total</th>
+                <th class="py-2 pr-4 font-medium">{{ $t('invoices.form.columnDescription') }}</th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.form.columnQuantity') }}
+                </th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.form.columnPrice') }}
+                </th>
+                <th class="py-2 pr-4 text-right font-medium">
+                  {{ $t('invoices.detail.columnTax') }}
+                </th>
+                <th class="py-2 pl-4 text-right font-medium">
+                  {{ $t('invoices.form.columnLineTotal') }}
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -268,13 +281,9 @@ async function confirmRemove(): Promise<void> {
 
     <ConfirmDialog
       :open="isConvertDialogOpen"
-      title="Convertir en facture"
-      :message="
-        quote
-          ? `Le devis ${quote.number} sera converti en facture envoyee. Cette action est irreversible.`
-          : ''
-      "
-      confirm-label="Convertir"
+      :title="$t('quotes.confirmConvertTitle')"
+      :message="quote ? $t('quotes.confirmConvertMessage', { number: quote.number }) : ''"
+      :confirm-label="$t('quotes.confirmConvertLabel')"
       :loading="isConverting"
       @confirm="confirmConvert"
       @cancel="isConvertDialogOpen = false"
@@ -282,13 +291,9 @@ async function confirmRemove(): Promise<void> {
 
     <ConfirmDialog
       :open="isRemoveDialogOpen"
-      title="Supprimer le devis"
-      :message="
-        quote
-          ? `Voulez-vous vraiment supprimer le devis ${quote.number} ? Cette action est irreversible.`
-          : ''
-      "
-      confirm-label="Supprimer"
+      :title="$t('quotes.confirmDeleteTitle')"
+      :message="quote ? $t('quotes.confirmDeleteMessage', { number: quote.number }) : ''"
+      :confirm-label="$t('common.delete')"
       :loading="isRemoving"
       @confirm="confirmRemove"
       @cancel="isRemoveDialogOpen = false"

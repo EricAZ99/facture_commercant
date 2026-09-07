@@ -1,4 +1,5 @@
 import { PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS } from '@/constants'
+import { i18n } from '@/i18n'
 import type { Payment } from '@/types'
 
 import { toCsv } from './csv'
@@ -25,8 +26,8 @@ export function paymentsToAccountingCsv(payments: Payment[]): string {
     formatDate(payment.paidAt),
     payment.invoiceNumber ?? '',
     payment.reference ?? '',
-    PAYMENT_METHOD_LABELS[payment.method],
-    PAYMENT_STATUS_LABELS[payment.status],
+    i18n.global.t(PAYMENT_METHOD_LABELS[payment.method]),
+    i18n.global.t(PAYMENT_STATUS_LABELS[payment.status]),
     String(payment.amount),
     String(payment.refundedAmount ?? 0)
   ])

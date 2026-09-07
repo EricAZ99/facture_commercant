@@ -42,7 +42,7 @@ const visibleItems = computed(() =>
       <button
         type="button"
         class="focus-ring rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 lg:hidden"
-        aria-label="Fermer le menu"
+        :aria-label="$t('sidebar.closeMenu')"
         @click="uiStore.closeMobileSidebar()"
       >
         <X class="size-5" aria-hidden="true" />
@@ -55,11 +55,11 @@ const visibleItems = computed(() =>
         :key="item.routeName"
         :to="{ name: item.routeName }"
         class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
-        active-class="!bg-primary-50 !text-primary-700"
+        active-class="!bg-primary-50 !text-primary-700 dark:!bg-primary-900 dark:!text-primary-300"
         @click="uiStore.closeMobileSidebar()"
       >
         <component :is="item.icon" class="size-5" aria-hidden="true" />
-        {{ item.label }}
+        {{ $t(item.labelKey) }}
       </RouterLink>
     </nav>
   </aside>

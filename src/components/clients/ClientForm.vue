@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -25,6 +26,8 @@ const emit = defineEmits<{
   submit: [payload: CreateClientPayload]
   cancel: []
 }>()
+
+const { t } = useI18n()
 
 /**
  * Etat local du formulaire : toujours des chaines (jamais `undefined`), pour
@@ -93,10 +96,12 @@ function fieldError(field: keyof ClientFormState): string | undefined {
 }
 
 function validate(): boolean {
-  localErrors.firstName = !isRequired(form.firstName) ? 'Le prenom est requis.' : undefined
-  localErrors.lastName = !isRequired(form.lastName) ? 'Le nom est requis.' : undefined
+  localErrors.firstName = !isRequired(form.firstName)
+    ? t('clients.form.firstNameRequired')
+    : undefined
+  localErrors.lastName = !isRequired(form.lastName) ? t('clients.form.lastNameRequired') : undefined
   localErrors.email =
-    form.email && !isValidEmail(form.email) ? "Format d'email invalide." : undefined
+    form.email && !isValidEmail(form.email) ? t('clients.form.emailInvalid') : undefined
 
   return Object.values(localErrors).every((message) => !message)
 }
@@ -131,64 +136,81 @@ function onSubmit(): void {
     <div class="grid grid-cols-2 gap-4">
       <BaseInput
         v-model="form.firstName"
-        label="Prenom"
+        :label="$t('clients.form.firstNameLabel')"
         :error="fieldError('firstName')"
         required
       />
-      <BaseInput v-model="form.lastName" label="Nom" :error="fieldError('lastName')" required />
+      <BaseInput
+        v-model="form.lastName"
+        :label="$t('clients.form.lastNameLabel')"
+        :error="fieldError('lastName')"
+        required
+      />
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <BaseInput
         v-model="form.phone"
-        label="Telephone"
+        :label="$t('clients.form.phoneLabel')"
         placeholder="+225 07 00 00 00 00"
         :error="fieldError('phone')"
       />
       <BaseInput
         v-model="form.email"
         type="email"
-        label="Email"
+        :label="$t('clients.form.emailLabel')"
         placeholder="client@example.com"
         :error="fieldError('email')"
       />
     </div>
 
-    <BaseInput v-model="form.address" label="Adresse" :error="fieldError('address')" />
+    <BaseInput
+      v-model="form.address"
+      :label="$t('clients.form.addressLabel')"
+      :error="fieldError('address')"
+    />
 
     <div class="grid grid-cols-2 gap-4">
-      <BaseInput v-model="form.city" label="Ville" :error="fieldError('city')" />
-      <BaseInput v-model="form.country" label="Pays" :error="fieldError('country')" />
+      <BaseInput
+        v-model="form.city"
+        :label="$t('clients.form.cityLabel')"
+        :error="fieldError('city')"
+      />
+      <BaseInput
+        v-model="form.country"
+        :label="$t('clients.form.countryLabel')"
+        :error="fieldError('country')"
+      />
     </div>
 
     <BaseInput
       v-model="form.taxId"
-      label="Identifiant fiscal"
-      hint="Optionnel."
+      :label="$t('clients.form.taxIdLabel')"
+      :hint="$t('clients.form.optionalHint')"
       :error="fieldError('taxId')"
     />
 
     <BaseInput
       v-model="form.tags"
-      label="Etiquettes"
-      placeholder="VIP, Grossiste..."
-      hint="Separees par des virgules. Utilisees pour segmenter/rechercher vos clients."
+      :label="$t('clients.form.tagsLabel')"
+      :placeholder="$t('clients.form.tagsPlaceholder')"
+      :hint="$t('clients.form.tagsHint')"
       :error="fieldError('tags')"
     />
 
     <BaseTextarea
       v-model="form.notes"
-      label="Notes"
-      hint="Note interne, jamais visible du client."
+      :label="$t('clients.form.notesLabel')"
+      :hint="$t('clients.form.notesHint')"
       :rows="2"
     />
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
       <BaseButton type="submit" :loading="submitting">
-        {{ client ? 'Enregistrer' : 'Creer le client' }}
+        {{ client ? $t('common.save') : $t('clients.form.submitCreate') }}
       </BaseButton>
     </div>
   </form>

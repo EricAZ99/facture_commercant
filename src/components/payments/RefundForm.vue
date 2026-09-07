@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -25,6 +26,8 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
+const { t } = useI18n()
+
 function refundable(): number {
   return Math.round((props.payment.amount - (props.payment.refundedAmount ?? 0)) * 100) / 100
 }
@@ -41,14 +44,18 @@ function validate(): boolean {
   const max = refundable()
 
   if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
-    localErrors.amount = 'Le montant doit etre un nombre positif.'
+    localErrors.amount = t('invoices.detail.amountInvalid')
   } else if (amount > max) {
-    localErrors.amount = `Le montant ne peut pas depasser le solde remboursable (${formatCurrency(max, props.currency)}).`
+    localErrors.amount = t('invoices.detail.refundForm.amountExceedsRefundable', {
+      amount: formatCurrency(max, props.currency)
+    })
   } else {
     localErrors.amount = undefined
   }
 
-  localErrors.reason = form.reason.trim() ? undefined : 'Le motif est requis.'
+  localErrors.reason = form.reason.trim()
+    ? undefined
+    : t('invoices.detail.refundForm.reasonRequired')
 
   return !localErrors.amount && !localErrors.reason
 }
@@ -62,7 +69,7 @@ function onSubmit(): void {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
     <p class="text-sm text-gray-500">
-      Solde remboursable :
+      {{ $t('invoices.detail.refundForm.refundableBalance') }}
       <span class="font-medium text-gray-900">{{ formatCurrency(refundable(), currency) }}</span>
     </p>
 
@@ -70,14 +77,14 @@ function onSubmit(): void {
       v-model="form.amount"
       type="number"
       min="0"
-      :label="`Montant a rembourser (${currency})`"
+      :label="$t('invoices.detail.refundForm.amountLabel', { currency })"
       :error="fieldError('amount')"
       required
     />
 
     <BaseTextarea
       v-model="form.reason"
-      label="Motif du remboursement"
+      :label="$t('invoices.detail.refundForm.reasonLabel')"
       :rows="2"
       :error="fieldError('reason')"
       required
@@ -85,9 +92,11 @@ function onSubmit(): void {
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" :loading="submitting">Confirmer le remboursement</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('invoices.detail.refundForm.submit')
+      }}</BaseButton>
     </div>
   </form>
 </template>

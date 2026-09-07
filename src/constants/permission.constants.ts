@@ -78,15 +78,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   cashier: ['client:read', 'product:read', 'invoice:read', 'payment:create', 'payment:read']
 }
 
-/** Libelles affichables des roles. */
-export const ROLE_LABELS: Record<UserRole, string> = {
-  owner: 'Proprietaire',
-  admin: 'Administrateur',
-  manager: 'Manager',
-  accountant: 'Comptable',
-  cashier: 'Caissier'
-}
-
 /**
  * Roles proposables lors de l'invitation d'un utilisateur ou du changement
  * de role. `owner` est exclu : il n'existe qu'une fois par commerce et

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -23,6 +24,8 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   submit: [payload: UpdateBusinessPayload]
 }>()
+
+const { t } = useI18n()
 
 /**
  * Etat local du formulaire : toujours des chaines (jamais `undefined`/
@@ -166,40 +169,42 @@ function fieldError(field: keyof BusinessFormState): string | undefined {
 }
 
 function validate(): boolean {
-  localErrors.name = !isRequired(form.name) ? 'Le nom du commerce est requis.' : undefined
+  localErrors.name = !isRequired(form.name) ? t('auth.register.businessNameRequired') : undefined
   localErrors.email = !isRequired(form.email)
-    ? "L'email est requis."
+    ? t('auth.emailRequired')
     : !isValidEmail(form.email)
-      ? "Format d'email invalide."
+      ? t('auth.emailInvalid')
       : undefined
-  localErrors.currency = !isRequired(form.currency) ? 'La devise est requise.' : undefined
+  localErrors.currency = !isRequired(form.currency)
+    ? t('settingsBusinessForm.currencyRequired')
+    : undefined
 
   const vatRate = Number(form.defaultVatRate)
   localErrors.defaultVatRate =
     form.defaultVatRate.trim() === '' || !isPositiveNumber(vatRate) || vatRate > 100
-      ? 'Le taux de TVA doit etre compris entre 0 et 100.'
+      ? t('settingsBusinessForm.vatRateInvalid')
       : undefined
 
   localErrors.numberPrefix = !isRequired(form.numberPrefix)
-    ? 'Le prefixe de numerotation est requis.'
+    ? t('settingsBusinessForm.numberPrefixRequired')
     : undefined
 
   const padding = Number(form.numberPadding)
   localErrors.numberPadding =
     !Number.isInteger(padding) || padding < 1 || padding > 10
-      ? 'Doit etre un nombre entier entre 1 et 10.'
+      ? t('settingsBusinessForm.numberPaddingInvalid')
       : undefined
 
   const nextNumber = Number(form.nextNumber)
   localErrors.nextNumber =
     !Number.isInteger(nextNumber) || nextNumber < 1
-      ? 'Doit etre un nombre entier superieur ou egal a 1.'
+      ? t('settingsBusinessForm.nextNumberInvalid')
       : undefined
 
   const paymentTermDays = Number(form.defaultPaymentTermDays)
   localErrors.defaultPaymentTermDays =
     !Number.isInteger(paymentTermDays) || paymentTermDays < 0
-      ? 'Doit etre un nombre entier positif ou nul.'
+      ? t('settingsBusinessForm.paymentTermDaysInvalid')
       : undefined
 
   return Object.values(localErrors).every((message) => !message)
@@ -271,17 +276,19 @@ function onSubmit(): void {
   <form class="flex flex-col gap-8" @submit.prevent="onSubmit">
     <!-- Informations generales -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Informations generales</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.generalInfoLegend') }}
+      </legend>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <BaseInput
           v-model="form.name"
-          label="Nom du commerce"
+          :label="$t('auth.register.businessNameLabel')"
           :error="fieldError('name')"
           required
         />
         <div class="flex flex-col gap-1.5">
           <label class="text-sm font-medium text-gray-700" for="business-type">
-            Categorie de commerce
+            {{ $t('settingsBusinessForm.businessCategoryLabel') }}
           </label>
           <select
             id="business-type"
@@ -300,46 +307,78 @@ function onSubmit(): void {
       </div>
       <BaseInput
         v-model="form.taxId"
-        label="Identifiant fiscal"
-        hint="Numero de contribuable, RCCM... (optionnel)"
+        :label="$t('clients.form.taxIdLabel')"
+        :hint="$t('settingsBusinessForm.taxIdHint')"
         :error="fieldError('taxId')"
       />
     </fieldset>
 
     <!-- Adresse -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Adresse de facturation</legend>
-      <BaseInput v-model="form.address" label="Adresse" :error="fieldError('address')" />
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.billingAddressLegend') }}
+      </legend>
+      <BaseInput
+        v-model="form.address"
+        :label="$t('clients.form.addressLabel')"
+        :error="fieldError('address')"
+      />
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BaseInput v-model="form.city" label="Ville" :error="fieldError('city')" />
-        <BaseInput v-model="form.country" label="Pays" :error="fieldError('country')" />
+        <BaseInput
+          v-model="form.city"
+          :label="$t('clients.form.cityLabel')"
+          :error="fieldError('city')"
+        />
+        <BaseInput
+          v-model="form.country"
+          :label="$t('clients.form.countryLabel')"
+          :error="fieldError('country')"
+        />
       </div>
     </fieldset>
 
     <!-- Adresse de livraison -->
     <fieldset class="flex flex-col gap-4">
       <legend class="mb-1 text-sm font-semibold text-gray-900">
-        Adresse de livraison
-        <span class="font-normal text-gray-400">(si differente de la facturation)</span>
+        {{ $t('settingsBusinessForm.shippingAddressLegend') }}
+        <span class="font-normal text-gray-400">{{
+          $t('settingsBusinessForm.shippingAddressHint')
+        }}</span>
       </legend>
-      <BaseInput v-model="form.shippingAddress" label="Adresse" />
+      <BaseInput v-model="form.shippingAddress" :label="$t('clients.form.addressLabel')" />
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BaseInput v-model="form.shippingCity" label="Ville" />
-        <BaseInput v-model="form.shippingCountry" label="Pays" />
+        <BaseInput v-model="form.shippingCity" :label="$t('clients.form.cityLabel')" />
+        <BaseInput v-model="form.shippingCountry" :label="$t('clients.form.countryLabel')" />
       </div>
     </fieldset>
 
     <!-- Reseaux sociaux -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Site web & reseaux sociaux</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.socialLegend') }}
+      </legend>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BaseInput v-model="form.website" type="url" label="Site web" placeholder="https://..." />
-        <BaseInput v-model="form.whatsapp" label="WhatsApp" placeholder="+225 07 00 00 00 00" />
-        <BaseInput v-model="form.facebook" type="url" label="Facebook" placeholder="https://..." />
+        <BaseInput
+          v-model="form.website"
+          type="url"
+          :label="$t('settingsBusinessForm.websiteLabel')"
+          placeholder="https://..."
+        />
+        <BaseInput
+          v-model="form.whatsapp"
+          :label="$t('settingsBusinessForm.whatsappLabel')"
+          placeholder="+225 07 00 00 00 00"
+        />
+        <BaseInput
+          v-model="form.facebook"
+          type="url"
+          :label="$t('settingsBusinessForm.facebookLabel')"
+          placeholder="https://..."
+        />
         <BaseInput
           v-model="form.instagram"
           type="url"
-          label="Instagram"
+          :label="$t('settingsBusinessForm.instagramLabel')"
           placeholder="https://..."
         />
       </div>
@@ -347,7 +386,9 @@ function onSubmit(): void {
 
     <!-- Horaires d'ouverture -->
     <fieldset class="flex flex-col gap-3">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Horaires d'ouverture</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.openingHoursLegend') }}
+      </legend>
       <div
         v-for="day in WEEKDAYS"
         :key="day.value"
@@ -366,27 +407,36 @@ function onSubmit(): void {
             class="focus-ring rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
           />
         </template>
-        <span v-else class="text-sm text-gray-400 sm:col-span-2">Ferme</span>
+        <span v-else class="text-sm text-gray-400 sm:col-span-2">{{
+          $t('settingsBusinessForm.closedLabel')
+        }}</span>
         <label class="flex items-center gap-2 text-sm text-gray-600">
           <input
             v-model="form.openingHours[day.value].closed"
             type="checkbox"
             class="focus-ring size-4 rounded border-gray-300"
           />
-          Ferme ce jour
+          {{ $t('settingsBusinessForm.closedThisDayLabel') }}
         </label>
       </div>
     </fieldset>
 
     <!-- Contact -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Contact</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.contactLegend') }}
+      </legend>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <BaseInput v-model="form.phone" type="tel" label="Telephone" :error="fieldError('phone')" />
+        <BaseInput
+          v-model="form.phone"
+          type="tel"
+          :label="$t('users.form.phoneLabel')"
+          :error="fieldError('phone')"
+        />
         <BaseInput
           v-model="form.email"
           type="email"
-          label="Email"
+          :label="$t('clients.form.emailLabel')"
           :error="fieldError('email')"
           required
         />
@@ -395,10 +445,14 @@ function onSubmit(): void {
 
     <!-- Devise et TVA -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Devise et TVA</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.currencyVatLegend') }}
+      </legend>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="flex flex-col gap-1.5">
-          <label class="text-sm font-medium text-gray-700" for="business-currency">Devise</label>
+          <label class="text-sm font-medium text-gray-700" for="business-currency">{{
+            $t('settings.currency')
+          }}</label>
           <select
             id="business-currency"
             v-model="form.currency"
@@ -412,7 +466,7 @@ function onSubmit(): void {
         <BaseInput
           v-model="form.defaultVatRate"
           type="number"
-          label="Taux de TVA par defaut (%)"
+          :label="$t('settingsBusinessForm.defaultVatRateLabel')"
           :disabled="!form.vatEnabled"
           :error="fieldError('defaultVatRate')"
         />
@@ -423,20 +477,24 @@ function onSubmit(): void {
           type="checkbox"
           class="focus-ring size-4 rounded border-gray-300 text-primary-600"
         />
-        Commerce assujetti a la TVA
+        {{ $t('settingsBusinessForm.vatEnabledLabel') }}
       </label>
     </fieldset>
 
     <!-- Configuration des factures -->
     <fieldset class="flex flex-col gap-4">
-      <legend class="mb-1 text-sm font-semibold text-gray-900">Configuration des factures</legend>
+      <legend class="mb-1 text-sm font-semibold text-gray-900">
+        {{ $t('settingsBusinessForm.invoiceConfigLegend') }}
+      </legend>
 
       <div>
-        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Numerotation</p>
+        <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
+          {{ $t('settingsBusinessForm.numberingLabel') }}
+        </p>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <BaseInput
             v-model="form.numberPrefix"
-            label="Prefixe"
+            :label="$t('settingsBusinessForm.prefixLabel')"
             placeholder="FA-"
             :error="fieldError('numberPrefix')"
             required
@@ -444,14 +502,14 @@ function onSubmit(): void {
           <BaseInput
             v-model="form.numberPadding"
             type="number"
-            label="Chiffres du numero"
-            hint="Ex : 4 -> 0007"
+            :label="$t('settingsBusinessForm.numberPaddingLabel')"
+            :hint="$t('settingsBusinessForm.numberPaddingHint')"
             :error="fieldError('numberPadding')"
           />
           <BaseInput
             v-model="form.nextNumber"
             type="number"
-            label="Prochain numero"
+            :label="$t('settingsBusinessForm.nextNumberLabel')"
             :error="fieldError('nextNumber')"
           />
         </div>
@@ -459,20 +517,20 @@ function onSubmit(): void {
 
       <div>
         <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-          Conditions de paiement
+          {{ $t('settingsBusinessForm.paymentTermsLabel') }}
         </p>
         <div class="flex flex-col gap-4">
           <BaseInput
             v-model="form.defaultPaymentTermDays"
             type="number"
-            label="Delai de paiement par defaut (jours)"
+            :label="$t('settingsBusinessForm.defaultPaymentTermDaysLabel')"
             :error="fieldError('defaultPaymentTermDays')"
           />
           <BaseTextarea
             v-model="form.paymentTerms"
-            label="Conditions de paiement affichees sur les factures"
+            :label="$t('settingsBusinessForm.paymentTermsTextLabel')"
             :rows="3"
-            placeholder="Ex : Paiement a reception de facture."
+            :placeholder="$t('settingsBusinessForm.paymentTermsPlaceholder')"
             :error="fieldError('paymentTerms')"
           />
         </div>
@@ -480,14 +538,16 @@ function onSubmit(): void {
 
       <BaseTextarea
         v-model="form.termsAndConditions"
-        label="Conditions generales de vente"
+        :label="$t('settingsBusinessForm.termsAndConditionsLabel')"
         :rows="4"
-        placeholder="Vos CGV, affichables sur vos documents..."
+        :placeholder="$t('settingsBusinessForm.termsAndConditionsPlaceholder')"
       />
     </fieldset>
 
     <div class="flex justify-end">
-      <BaseButton type="submit" :loading="submitting">Enregistrer les modifications</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('settingsBusinessForm.submit')
+      }}</BaseButton>
     </div>
   </form>
 </template>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import { INVITABLE_ROLES, ROLE_LABELS } from '@/constants'
+import { INVITABLE_ROLES } from '@/constants'
 import type { CreateUserPayload, UserRole } from '@/types'
 import { isRequired, isValidEmail } from '@/utils/validators'
 
@@ -22,6 +23,8 @@ const emit = defineEmits<{
   submit: [payload: CreateUserPayload]
   cancel: []
 }>()
+
+const { t } = useI18n()
 
 interface UserFormState {
   firstName: string
@@ -48,12 +51,14 @@ function fieldError(field: keyof UserFormState): string | undefined {
 }
 
 function validate(): boolean {
-  localErrors.firstName = !isRequired(form.firstName) ? 'Le prenom est requis.' : undefined
-  localErrors.lastName = !isRequired(form.lastName) ? 'Le nom est requis.' : undefined
+  localErrors.firstName = !isRequired(form.firstName)
+    ? t('users.form.firstNameRequired')
+    : undefined
+  localErrors.lastName = !isRequired(form.lastName) ? t('users.form.lastNameRequired') : undefined
   localErrors.email = !isRequired(form.email)
-    ? "L'email est requis."
+    ? t('users.form.emailRequired')
     : !isValidEmail(form.email)
-      ? "Format d'email invalide."
+      ? t('users.form.emailInvalid')
       : undefined
 
   return Object.values(localErrors).every((message) => !message)
@@ -78,52 +83,61 @@ function onSubmit(): void {
     <div class="grid grid-cols-2 gap-4">
       <BaseInput
         v-model="form.firstName"
-        label="Prenom"
+        :label="$t('users.form.firstNameLabel')"
         :error="fieldError('firstName')"
         required
       />
-      <BaseInput v-model="form.lastName" label="Nom" :error="fieldError('lastName')" required />
+      <BaseInput
+        v-model="form.lastName"
+        :label="$t('users.form.lastNameLabel')"
+        :error="fieldError('lastName')"
+        required
+      />
     </div>
 
     <BaseInput
       v-model="form.email"
       type="email"
-      label="Email"
-      placeholder="collegue@commerce.com"
+      :label="$t('users.form.emailLabel')"
+      placeholder="colleague@example.com"
       :error="fieldError('email')"
       required
     />
     <BaseInput
       v-model="form.phone"
-      label="Telephone"
-      hint="Optionnel."
+      :label="$t('users.form.phoneLabel')"
+      :hint="$t('users.form.optionalHint')"
       :error="fieldError('phone')"
     />
     <BaseInput
       v-model="form.department"
-      label="Departement"
-      hint="Optionnel, ex: Ventes, Comptabilite."
+      :label="$t('users.form.departmentLabel')"
+      :hint="$t('users.form.departmentHint')"
     />
 
     <div class="flex flex-col gap-1.5">
-      <label class="text-sm font-medium text-gray-700" for="user-role">Role</label>
+      <label class="text-sm font-medium text-gray-700" for="user-role">{{
+        $t('users.form.roleLabel')
+      }}</label>
       <select
         id="user-role"
         v-model="form.role"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
       >
         <option v-for="role in INVITABLE_ROLES" :key="role" :value="role">
-          {{ ROLE_LABELS[role] }}
+          {{ $t(`roles.${role}`) }}
         </option>
       </select>
-      <p class="text-sm text-gray-500">Determine les permissions par defaut de cet utilisateur.</p>
+      <p class="text-sm text-gray-500">{{ $t('users.form.roleHint') }}</p>
     </div>
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" :loading="submitting">Inviter</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('users.form.submitInvite')
+      }}</BaseButton>
     </div>
   </form>
 </template>

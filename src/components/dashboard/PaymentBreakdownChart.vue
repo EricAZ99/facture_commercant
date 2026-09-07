@@ -33,7 +33,7 @@ const segments = computed(() =>
         :key="segment.method"
         :class="PAYMENT_METHOD_COLORS[segment.method]"
         :style="{ width: `${segment.percentage}%` }"
-        :title="`${PAYMENT_METHOD_LABELS[segment.method]}: ${formatCurrency(segment.amount, currency)}`"
+        :title="`${$t(PAYMENT_METHOD_LABELS[segment.method])}: ${formatCurrency(segment.amount, currency)}`"
       />
     </div>
 
@@ -45,7 +45,7 @@ const segments = computed(() =>
       >
         <span class="flex items-center gap-2 text-gray-600">
           <span class="size-2.5 rounded-full" :class="PAYMENT_METHOD_COLORS[segment.method]" />
-          {{ PAYMENT_METHOD_LABELS[segment.method] }}
+          {{ $t(PAYMENT_METHOD_LABELS[segment.method]) }}
         </span>
         <span class="font-medium text-gray-900">
           {{ formatCurrency(segment.amount, currency) }}

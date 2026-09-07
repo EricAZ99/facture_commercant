@@ -71,15 +71,15 @@ async function confirmDelete(): Promise<void> {
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
-      Retour aux clients
+      {{ $t('clients.backToClients') }}
     </RouterLink>
 
     <PageHeader
-      :title="client ? `${client.firstName} ${client.lastName}` : 'Client'"
-      subtitle="Details du client."
+      :title="client ? `${client.firstName} ${client.lastName}` : $t('clients.detailFallbackTitle')"
+      :subtitle="$t('clients.detailsSubtitle')"
     />
 
-    <LoadingState v-if="isLoading" message="Chargement du client..." />
+    <LoadingState v-if="isLoading" :message="$t('clients.loading')" />
     <ErrorState v-else-if="isError" :message="error?.message" @retry="() => execute(props.id)" />
 
     <ClientDetails
@@ -90,7 +90,7 @@ async function confirmDelete(): Promise<void> {
       @delete="isDeleteDialogOpen = true"
     />
 
-    <BaseModal :open="isFormOpen" title="Modifier le client" @close="isFormOpen = false">
+    <BaseModal :open="isFormOpen" :title="$t('clients.editTitle')" @close="isFormOpen = false">
       <ClientForm
         :client="client"
         :submitting="isSubmitting"
@@ -102,13 +102,13 @@ async function confirmDelete(): Promise<void> {
 
     <ConfirmDialog
       :open="isDeleteDialogOpen"
-      title="Supprimer le client"
+      :title="$t('clients.confirmDeleteTitle')"
       :message="
         client
-          ? `Voulez-vous vraiment supprimer ${client.firstName} ${client.lastName} ? Cette action est irreversible.`
+          ? $t('clients.confirmDeleteMessage', { name: `${client.firstName} ${client.lastName}` })
           : ''
       "
-      confirm-label="Supprimer"
+      :confirm-label="$t('common.delete')"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="isDeleteDialogOpen = false"

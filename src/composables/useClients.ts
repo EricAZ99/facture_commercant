@@ -35,6 +35,7 @@ export function useClients() {
   const isExporting = ref(false)
   const isImporting = ref(false)
   const isMerging = ref(false)
+  const isBulkDeleting = ref(false)
 
   async function load(): Promise<void> {
     await store.fetchClients({
@@ -131,6 +132,40 @@ export function useClients() {
     }
   }
 
+  /** Exporte en CSV une selection de clients par leurs IDs. */
+  async function exportSelectedClients(ids: ID[]): Promise<void> {
+    isExporting.value = true
+    try {
+      const response = await clientService.list({ page: 1, perPage: 10000 })
+      const selected = response.data.filter((c) => ids.includes(c.id))
+      const csv = clientsToCsv(selected)
+      downloadCsv(`clients-selection-${new Date().toISOString().slice(0, 10)}.csv`, csv)
+    } catch (err) {
+      toast.error((err as ApiError).message)
+    } finally {
+      isExporting.value = false
+    }
+  }
+
+  /** Supprime plusieurs clients en une seule operation. */
+  async function bulkDeleteClients(ids: ID[]): Promise<boolean> {
+    isBulkDeleting.value = true
+    try {
+      await clientService.deleteMany(ids)
+      toast.success(`${ids.length} client(s) supprime(s).`)
+      if (store.items.length <= ids.length && pagination.page.value > 1) {
+        pagination.goToPage(pagination.page.value - 1)
+      }
+      await load()
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isBulkDeleting.value = false
+    }
+  }
+
   /** Exporte en CSV tous les clients correspondant a la recherche en cours (pas seulement la page affichee). */
   async function exportClients(): Promise<void> {
     isExporting.value = true
@@ -204,6 +239,7 @@ export function useClients() {
     isExporting,
     isImporting,
     isMerging,
+    isBulkDeleting,
     load,
     goToPage,
     nextPage,
@@ -212,6 +248,8 @@ export function useClients() {
     submitUpdate,
     removeClient,
     exportClients,
+    exportSelectedClients,
+    bulkDeleteClients,
     importClientsFromCsv,
     mergeClients
   }

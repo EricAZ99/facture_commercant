@@ -2,18 +2,18 @@ import type { DiscountType, InvoiceStatus } from '@/types'
 
 /** Libelles affichables des types de remise. */
 export const DISCOUNT_TYPE_LABELS: Record<DiscountType, string> = {
-  percentage: 'Pourcentage',
-  fixed: 'Montant fixe'
+  percentage: 'discountTypes.percentage',
+  fixed: 'discountTypes.fixed'
 }
 
 /** Libelles affichables des statuts de facture. */
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
-  draft: 'Brouillon',
-  sent: 'Envoyee',
-  paid: 'Payee',
-  partially_paid: 'Partiellement payee',
-  overdue: 'En retard',
-  cancelled: 'Annulee'
+  draft: 'invoiceStatuses.draft',
+  sent: 'invoiceStatuses.sent',
+  paid: 'invoiceStatuses.paid',
+  partially_paid: 'invoiceStatuses.partially_paid',
+  overdue: 'invoiceStatuses.overdue',
+  cancelled: 'invoiceStatuses.cancelled'
 }
 
 /** Variante de `BaseBadge` associee a chaque statut de facture. */

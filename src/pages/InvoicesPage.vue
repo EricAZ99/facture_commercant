@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
+import BulkActionBar from '@/components/base/BulkActionBar.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import InvoiceFilters from '@/components/invoices/InvoiceFilters.vue'
 import InvoiceList from '@/components/invoices/InvoiceList.vue'
@@ -22,9 +23,6 @@ const authStore = useAuthStore()
 const { can } = usePermissions()
 const currency = computed(() => authStore.business?.currency ?? 'XOF')
 
-// Le chargement initial est declenche par le watcher (immediate) sur
-// `route.query` a l'interieur de `useInvoices` : pas besoin d'un
-// `onMounted(load)` ici, l'URL est deja la source de verite.
 const {
   store,
   filters,
@@ -36,6 +34,8 @@ const {
   setClientFilter,
   resetFilters,
   isCancelling,
+  isBulkDownloading,
+  isBulkCancelling,
   duplicateInvoice,
   downloadInvoice,
   openInvoicePdf,
@@ -43,8 +43,31 @@ const {
   shareInvoice,
   sendInvoiceByEmail,
   sendInvoiceByWhatsApp,
-  cancelInvoice
+  cancelInvoice,
+  bulkDownloadInvoices,
+  bulkCancelInvoices
 } = useInvoices()
+
+// --- Sélection multiple --------------------------------------------------
+
+const selection = ref<string[]>([])
+
+function clearSelection(): void {
+  selection.value = []
+}
+
+async function onBulkAction(action: string): Promise<void> {
+  const selected = store.items.filter((i) => selection.value.includes(i.id))
+  if (action === 'download') {
+    await bulkDownloadInvoices(selected)
+  } else if (action === 'cancel') {
+    const count = await bulkCancelInvoices(selected)
+    if (count > 0) {
+      clearSelection()
+      await load()
+    }
+  }
+}
 
 function viewInvoice(invoice: Invoice): void {
   router.push({ name: ROUTE_NAMES.invoiceDetail, params: { id: invoice.id } })
@@ -96,12 +119,12 @@ async function confirmCancel(): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Factures" subtitle="Emettez et suivez vos factures.">
+    <PageHeader :title="$t('invoices.title')" :subtitle="$t('invoices.subtitle')">
       <template #actions>
         <RouterLink v-if="can('invoice:create')" :to="{ name: ROUTE_NAMES.invoiceCreate }">
           <BaseButton>
             <Plus class="size-4" aria-hidden="true" />
-            Nouvelle facture
+            {{ $t('invoices.newInvoice') }}
           </BaseButton>
         </RouterLink>
       </template>
@@ -131,7 +154,7 @@ async function confirmCancel(): Promise<void> {
 
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement des factures..."
+        :message="$t('invoices.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -141,16 +164,16 @@ async function confirmCancel(): Promise<void> {
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="FileText"
-        title="Aucune facture"
+        :title="$t('invoices.emptyTitle')"
         :message="
           hasActiveFilters
-            ? 'Aucun resultat pour ces filtres.'
-            : 'Creez votre premiere facture pour commencer a facturer vos clients.'
+            ? $t('invoices.emptyMessageFiltered')
+            : $t('invoices.emptyMessageDefault')
         "
       >
         <template #action>
           <RouterLink :to="{ name: ROUTE_NAMES.invoiceCreate }">
-            <BaseButton size="sm">Creer une facture</BaseButton>
+            <BaseButton size="sm">{{ $t('invoices.createInvoice') }}</BaseButton>
           </RouterLink>
         </template>
       </EmptyState>
@@ -159,6 +182,7 @@ async function confirmCancel(): Promise<void> {
         <InvoiceList
           :invoices="store.items"
           :currency="currency"
+          :selection="selection"
           @view="viewInvoice"
           @edit="editInvoice"
           @duplicate="onDuplicate"
@@ -169,12 +193,13 @@ async function confirmCancel(): Promise<void> {
           @send-email="sendInvoiceByEmail"
           @send-whats-app="sendInvoiceByWhatsApp"
           @cancel="askCancel"
+          @update:selection="selection = $event"
         />
 
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} facture(s)</p>
+          <p>{{ $t('invoices.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -182,7 +207,7 @@ async function confirmCancel(): Promise<void> {
               :disabled="!pagination.hasPrevPage.value"
               @click="prevPage"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ pagination.page.value }} / {{ pagination.totalPages.value }}</span>
             <BaseButton
@@ -191,7 +216,7 @@ async function confirmCancel(): Promise<void> {
               :disabled="!pagination.hasNextPage.value"
               @click="nextPage"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>
@@ -200,16 +225,40 @@ async function confirmCancel(): Promise<void> {
 
     <ConfirmDialog
       :open="invoicePendingCancel !== null"
-      title="Annuler la facture"
+      :title="$t('invoices.confirmCancelTitle')"
       :message="
         invoicePendingCancel
-          ? `Voulez-vous vraiment annuler la facture ${invoicePendingCancel.number} ? Cette action est irreversible.`
+          ? $t('invoices.confirmCancelMessage', { number: invoicePendingCancel.number })
           : ''
       "
-      confirm-label="Annuler la facture"
+      :confirm-label="$t('invoices.confirmCancelTitle')"
       :loading="isCancelling"
       @confirm="confirmCancel"
       @cancel="invoicePendingCancel = null"
+    />
+
+    <BulkActionBar
+      :count="selection.length"
+      :actions="[
+        {
+          label: $t('invoices.bulkDownload'),
+          emit: 'download',
+          variant: 'outline',
+          loading: isBulkDownloading
+        },
+        ...(can('invoice:update')
+          ? [
+              {
+                label: $t('invoices.bulkCancel'),
+                emit: 'cancel',
+                variant: 'danger' as const,
+                loading: isBulkCancelling
+              }
+            ]
+          : [])
+      ]"
+      @action="onBulkAction"
+      @clear="clearSelection"
     />
   </div>
 </template>

@@ -13,13 +13,12 @@ const emit = defineEmits<{
     <div class="flex items-start gap-3">
       <AlertTriangle class="mt-0.5 size-5 shrink-0 text-red-600" aria-hidden="true" />
       <div class="flex-1">
-        <h2 class="text-sm font-semibold text-red-900">Zone dangereuse</h2>
+        <h2 class="text-sm font-semibold text-red-900">{{ $t('settingsDangerZone.title') }}</h2>
         <p class="mt-1 text-sm text-red-700">
-          Supprimer definitivement votre compte commerce et toutes ses donnees. Cette action ne peut
-          pas etre annulee.
+          {{ $t('settingsDangerZone.deleteBusinessWarning') }}
         </p>
         <BaseButton variant="danger" size="sm" class="mt-3" @click="emit('deleteAccount')">
-          Supprimer mon compte
+          {{ $t('settings.deleteMyAccountTitle') }}
         </BaseButton>
       </div>
     </div>

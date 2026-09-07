@@ -41,9 +41,19 @@ export function generateNewBusiness(): NewBusiness {
  * (ex: menu utilisateur du topbar) sans dupliquer cette logique dans chaque test.
  */
 async function dismissOnboardingIfPresent(page: Page): Promise<void> {
-  const skipButton = page.getByRole('button', { name: 'Passer' })
-  if (await skipButton.isVisible().catch(() => false)) {
+  // `exact: true` : "Passer" (sans correspondance partielle) pour ne jamais
+  // matcher un autre bouton dont le libelle accessible contiendrait ce mot
+  // (ex: bascule de theme "Activer le theme sombre" ne le contient plus,
+  // mais on reste explicite par robustesse).
+  const skipButton = page.getByRole('button', { name: 'Passer', exact: true })
+  try {
+    // `isVisible()` seul n'attend pas l'apparition (verification immediate,
+    // sujette a une course avec le rendu) : `waitFor` reessaie reellement
+    // pendant la fenetre impartie.
+    await skipButton.waitFor({ state: 'visible', timeout: 3000 })
     await skipButton.click()
+  } catch {
+    // Pas d'onboarding a ecarter (deja vu pour ce commerce, ou n'apparait pas).
   }
 }
 

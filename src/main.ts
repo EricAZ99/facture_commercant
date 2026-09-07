@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { createApp } from 'vue'
 
 import App from './App.vue'
+import { i18n } from './i18n'
 import router from './router'
 import { useAdminAuthStore, useAuthStore } from './stores'
 
@@ -13,6 +14,7 @@ const pinia = createPinia()
 app.use(pinia)
 setActivePinia(pinia)
 app.use(router)
+app.use(i18n)
 
 // Restaure les deux sessions persistees (commercant + admin, jetons
 // distincts) avant le premier rendu, pour que les guards de route

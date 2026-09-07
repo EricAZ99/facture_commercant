@@ -54,7 +54,7 @@ async function exportAccountingCsv(): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Paiements" subtitle="Suivez les encaissements de vos factures.">
+    <PageHeader :title="$t('payments.title')" :subtitle="$t('payments.subtitle')">
       <template #actions>
         <BaseButton
           v-if="data && data.data.length > 0"
@@ -63,19 +63,19 @@ async function exportAccountingCsv(): Promise<void> {
           @click="exportAccountingCsv"
         >
           <Download class="size-4" aria-hidden="true" />
-          Export comptable (CSV)
+          {{ $t('payments.exportCsv') }}
         </BaseButton>
       </template>
     </PageHeader>
 
     <BaseCard>
-      <LoadingState v-if="isLoading && !data" message="Chargement des paiements..." />
+      <LoadingState v-if="isLoading && !data" :message="$t('payments.loading')" />
       <ErrorState v-else-if="isError && !data" :message="error?.message" @retry="load" />
       <EmptyState
         v-else-if="data && data.data.length === 0"
         :icon="Wallet"
-        title="Aucun paiement"
-        message="Les paiements enregistres apparaitront ici."
+        :title="$t('payments.emptyTitle')"
+        :message="$t('payments.emptyMessage')"
       />
 
       <template v-else-if="data">
@@ -84,7 +84,7 @@ async function exportAccountingCsv(): Promise<void> {
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ data.meta.total }} paiement(s) enregistre(s).</p>
+          <p>{{ $t('payments.count', { count: data.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -92,7 +92,7 @@ async function exportAccountingCsv(): Promise<void> {
               :disabled="page <= 1"
               @click="goToPage(page - 1)"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ data.meta.page }} / {{ data.meta.totalPages }}</span>
             <BaseButton
@@ -101,7 +101,7 @@ async function exportAccountingCsv(): Promise<void> {
               :disabled="page >= data.meta.totalPages"
               @click="goToPage(page + 1)"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>

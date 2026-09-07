@@ -33,7 +33,7 @@ function onNumberInput(field: 'quantity' | 'unitPrice' | 'taxRate', value: strin
     <input
       :value="line.description"
       type="text"
-      placeholder="Description"
+      :placeholder="$t('invoices.form.descriptionPlaceholder')"
       class="focus-ring col-span-5 rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
       @input="emit('update', { description: ($event.target as HTMLInputElement).value })"
     />
@@ -68,7 +68,7 @@ function onNumberInput(field: 'quantity' | 'unitPrice' | 'taxRate', value: strin
     <button
       type="button"
       class="focus-ring col-span-1 justify-self-end rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-      aria-label="Supprimer la ligne"
+      :aria-label="$t('invoices.form.removeLine')"
       @click="emit('remove')"
     >
       <Trash2 class="size-4" />

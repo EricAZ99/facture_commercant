@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Power, PowerOff, ShieldCheck, Trash2 } from 'lucide-vue-next'
+import { KeyRound, Power, PowerOff, ShieldCheck, Trash2 } from 'lucide-vue-next'
 
 import BaseBadge from '@/components/base/BaseBadge.vue'
-import { INVITABLE_ROLES, ROLE_LABELS } from '@/constants'
+import { INVITABLE_ROLES } from '@/constants'
 import type { ID, User, UserRole } from '@/types'
 import { formatDate, getInitials } from '@/utils/formatters'
 
@@ -10,6 +10,15 @@ interface Props {
   users: User[]
   /** Utilisateur actuellement connecte : ses propres actions sensibles sont desactivees. */
   currentUserId: ID
+  /**
+   * Changement de role en attente de confirmation (voir UsersPage.vue). Tant
+   * que la confirmation n'est pas tranchee, la ligne concernee affiche le
+   * role vise plutot que le role reel — au clic sur "Annuler", ce prop
+   * redevient `null` et force le <select> a revenir au role reel (un
+   * changement de prop reel, contrairement au role du user qui n'a pas
+   * bouge, garantit que Vue repatch bien la valeur du <select> natif).
+   */
+  pendingRoleChange?: { user: User; role: UserRole } | null
 }
 
 defineProps<Props>()
@@ -18,6 +27,7 @@ const emit = defineEmits<{
   changeRole: [user: User, role: UserRole]
   toggleActive: [user: User]
   editPermissions: [user: User]
+  resetPassword: [user: User]
   delete: [user: User]
 }>()
 
@@ -32,12 +42,12 @@ function onRoleChange(user: User, event: Event): void {
     <table class="w-full text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-          <th class="py-2 pr-4 font-medium">Utilisateur</th>
-          <th class="py-2 pr-4 font-medium">Role</th>
-          <th class="py-2 pr-4 font-medium">Departement</th>
-          <th class="py-2 pr-4 font-medium">Statut</th>
-          <th class="py-2 pr-4 font-medium">Derniere connexion</th>
-          <th class="py-2 pl-4 text-right font-medium">Actions</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('users.list.columnUser') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('users.list.columnRole') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('users.list.columnDepartment') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('users.list.columnStatus') }}</th>
+          <th class="py-2 pr-4 font-medium">{{ $t('users.list.columnLastLogin') }}</th>
+          <th class="py-2 pl-4 text-right font-medium">{{ $t('users.list.columnActions') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -52,7 +62,9 @@ function onRoleChange(user: User, event: Event): void {
               <div class="min-w-0">
                 <p class="truncate font-medium text-gray-900">
                   {{ user.firstName }} {{ user.lastName }}
-                  <span v-if="user.id === currentUserId" class="text-xs text-gray-400">(vous)</span>
+                  <span v-if="user.id === currentUserId" class="text-xs text-gray-400">{{
+                    $t('users.you')
+                  }}</span>
                 </p>
                 <p class="truncate text-xs text-gray-500">{{ user.email }}</p>
               </div>
@@ -60,27 +72,27 @@ function onRoleChange(user: User, event: Event): void {
           </td>
           <td class="py-3 pr-4">
             <BaseBadge v-if="user.role === 'owner'" variant="info">{{
-              ROLE_LABELS.owner
+              $t('roles.owner')
             }}</BaseBadge>
             <select
               v-else
               class="focus-ring rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-900"
-              :value="user.role"
+              :value="pendingRoleChange?.user.id === user.id ? pendingRoleChange.role : user.role"
               @change="onRoleChange(user, $event)"
             >
               <option v-for="role in INVITABLE_ROLES" :key="role" :value="role">
-                {{ ROLE_LABELS[role] }}
+                {{ $t(`roles.${role}`) }}
               </option>
             </select>
           </td>
           <td class="py-3 pr-4 text-gray-500">{{ user.department || '-' }}</td>
           <td class="py-3 pr-4">
             <BaseBadge :variant="user.isActive ? 'success' : 'default'">
-              {{ user.isActive ? 'Actif' : 'Inactif' }}
+              {{ user.isActive ? $t('users.active') : $t('users.inactive') }}
             </BaseBadge>
           </td>
           <td class="py-3 pr-4 text-gray-500">
-            {{ user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Jamais connecte' }}
+            {{ user.lastLoginAt ? formatDate(user.lastLoginAt) : $t('users.neverLoggedIn') }}
           </td>
           <td class="py-3 pl-4">
             <div class="flex justify-end gap-1">
@@ -88,8 +100,8 @@ function onRoleChange(user: User, event: Event): void {
                 v-if="user.role !== 'owner' && user.id !== currentUserId"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Modifier les permissions"
-                title="Modifier les permissions"
+                :aria-label="$t('users.editPermissions')"
+                :title="$t('users.editPermissions')"
                 @click="emit('editPermissions', user)"
               >
                 <ShieldCheck class="size-4" />
@@ -98,7 +110,17 @@ function onRoleChange(user: User, event: Event): void {
                 v-if="user.role !== 'owner' && user.id !== currentUserId"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                :aria-label="user.isActive ? 'Desactiver' : 'Reactiver'"
+                :aria-label="$t('users.resetPassword')"
+                :title="$t('users.resetPassword')"
+                @click="emit('resetPassword', user)"
+              >
+                <KeyRound class="size-4" />
+              </button>
+              <button
+                v-if="user.role !== 'owner' && user.id !== currentUserId"
+                type="button"
+                class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                :aria-label="user.isActive ? $t('users.deactivate') : $t('users.reactivate')"
                 @click="emit('toggleActive', user)"
               >
                 <PowerOff v-if="user.isActive" class="size-4" />
@@ -108,7 +130,7 @@ function onRoleChange(user: User, event: Event): void {
                 v-if="user.role !== 'owner' && user.id !== currentUserId"
                 type="button"
                 class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                aria-label="Supprimer"
+                :aria-label="$t('common.delete')"
                 @click="emit('delete', user)"
               >
                 <Trash2 class="size-4" />

@@ -21,12 +21,12 @@ onMounted(() => load())
 
 <template>
   <div>
-    <PageHeader title="Avoirs" subtitle="Consultez les notes de credit emises pour vos factures." />
+    <PageHeader :title="$t('creditNotes.title')" :subtitle="$t('creditNotes.subtitle')" />
 
     <BaseCard>
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement des avoirs..."
+        :message="$t('creditNotes.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -36,8 +36,8 @@ onMounted(() => load())
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="FileMinus"
-        title="Aucun avoir"
-        message="Les avoirs emis depuis une facture apparaitront ici."
+        :title="$t('creditNotes.emptyTitle')"
+        :message="$t('creditNotes.emptyMessage')"
       />
 
       <template v-else>
@@ -46,7 +46,7 @@ onMounted(() => load())
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} avoir(s)</p>
+          <p>{{ $t('creditNotes.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -54,7 +54,7 @@ onMounted(() => load())
               :disabled="page <= 1"
               @click="goToPage(page - 1)"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ store.meta.page }} / {{ store.meta.totalPages }}</span>
             <BaseButton
@@ -63,7 +63,7 @@ onMounted(() => load())
               :disabled="page >= store.meta.totalPages"
               @click="goToPage(page + 1)"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>

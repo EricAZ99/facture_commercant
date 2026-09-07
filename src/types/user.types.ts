@@ -20,6 +20,17 @@ export interface User {
   updatedAt: ISODateString
 }
 
+/**
+ * Utilisateur nouvellement cree (ou dont le mot de passe vient d'etre
+ * regenere), avec son mot de passe temporaire. Fourni UNE SEULE FOIS par le
+ * backend (jamais renvoye ni persiste cote frontend au-dela de cet instant) :
+ * ce mock n'envoie aucun email reel, c'est au proprietaire de le transmettre
+ * manuellement au nouvel utilisateur.
+ */
+export interface InvitedUser extends User {
+  temporaryPassword: string
+}
+
 /** Payload de creation/invitation d'un utilisateur au sein d'un commerce. */
 export interface CreateUserPayload {
   firstName: string

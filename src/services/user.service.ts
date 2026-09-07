@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   CreateUserPayload,
   ID,
+  InvitedUser,
   ListQueryParams,
   PaginatedResponse,
   UpdateUserPayload,
@@ -27,8 +28,11 @@ export const userService = {
     return data.data
   },
 
-  async create(payload: CreateUserPayload): Promise<User> {
-    const { data } = await apiClient.post<ApiResponse<User>>(API_ENDPOINTS.users.base, payload)
+  async create(payload: CreateUserPayload): Promise<InvitedUser> {
+    const { data } = await apiClient.post<ApiResponse<InvitedUser>>(
+      API_ENDPOINTS.users.base,
+      payload
+    )
     return data.data
   },
 
@@ -39,6 +43,14 @@ export const userService = {
 
   async remove(id: ID): Promise<void> {
     await apiClient.delete(API_ENDPOINTS.users.byId(id))
+  },
+
+  /** Regenere le mot de passe temporaire d'un utilisateur (compte perdu/mot de passe egare). */
+  async resetPassword(id: ID): Promise<InvitedUser> {
+    const { data } = await apiClient.post<ApiResponse<InvitedUser>>(
+      API_ENDPOINTS.users.resetPassword(id)
+    )
+    return data.data
   },
 
   /** Historique de connexion de l'utilisateur courant. */

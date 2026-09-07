@@ -104,17 +104,20 @@ async function confirmDelete(): Promise<void> {
       class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-700"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
-      Retour aux produits
+      {{ $t('products.backToProducts') }}
     </RouterLink>
 
-    <PageHeader :title="product?.name ?? 'Produit'" subtitle="Details du produit." />
+    <PageHeader
+      :title="product?.name ?? $t('products.detailFallbackTitle')"
+      :subtitle="$t('products.detailsSubtitle')"
+    />
 
-    <LoadingState v-if="isLoading" message="Chargement du produit..." />
+    <LoadingState v-if="isLoading" :message="$t('products.loading')" />
     <ErrorState v-else-if="isError" :message="error?.message" @retry="() => execute(props.id)" />
 
     <div v-else-if="product" class="flex flex-col gap-4">
       <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-        <p class="mb-3 text-sm font-semibold text-gray-900">Photo</p>
+        <p class="mb-3 text-sm font-semibold text-gray-900">{{ $t('products.photo') }}</p>
         <ProductImageUploader
           :image-url="product.imageUrl"
           :uploading="isUploadingImage"
@@ -139,7 +142,7 @@ async function confirmDelete(): Promise<void> {
       />
     </div>
 
-    <BaseModal :open="isFormOpen" title="Modifier le produit" @close="isFormOpen = false">
+    <BaseModal :open="isFormOpen" :title="$t('products.editTitle')" @close="isFormOpen = false">
       <ProductForm
         :product="product"
         :submitting="isSubmitting"
@@ -155,13 +158,9 @@ async function confirmDelete(): Promise<void> {
 
     <ConfirmDialog
       :open="isDeleteDialogOpen"
-      title="Supprimer le produit"
-      :message="
-        product
-          ? `Voulez-vous vraiment supprimer ${product.name} ? Cette action est irreversible.`
-          : ''
-      "
-      confirm-label="Supprimer"
+      :title="$t('products.confirmDeleteTitle')"
+      :message="product ? $t('products.confirmDeleteMessage', { name: product.name }) : ''"
+      :confirm-label="$t('common.delete')"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="isDeleteDialogOpen = false"

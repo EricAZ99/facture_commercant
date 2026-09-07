@@ -49,7 +49,7 @@ async function searchClients(query: string): Promise<Client[]> {
       <input
         :value="search"
         type="search"
-        placeholder="Rechercher par numero ou client..."
+        :placeholder="$t('invoices.filters.searchPlaceholder')"
         class="focus-ring w-full max-w-sm rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
         @input="emit('update:search', ($event.target as HTMLInputElement).value)"
       />
@@ -58,15 +58,15 @@ async function searchClients(query: string): Promise<Client[]> {
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       <select
         :value="status"
-        aria-label="Filtrer par statut"
+        :aria-label="$t('invoices.filters.statusLabel')"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         @change="
           emit('update:status', ($event.target as HTMLSelectElement).value as InvoiceStatus | '')
         "
       >
-        <option value="">Tous les statuts</option>
+        <option value="">{{ $t('invoices.filters.allStatuses') }}</option>
         <option v-for="(label, value) in INVOICE_STATUS_LABELS" :key="value" :value="value">
-          {{ label }}
+          {{ $t(label) }}
         </option>
       </select>
 
@@ -76,7 +76,7 @@ async function searchClients(query: string): Promise<Client[]> {
           :get-label="clientLabel"
           :get-key="(c: Client) => c.id"
           :selected="selectedClient"
-          placeholder="Client..."
+          :placeholder="$t('invoices.filters.clientPlaceholder')"
           @select="(c: Client) => emit('selectClient', c)"
           @clear="emit('clearClient')"
         />
@@ -85,14 +85,14 @@ async function searchClients(query: string): Promise<Client[]> {
       <input
         :value="dateFrom"
         type="date"
-        aria-label="Date de debut"
+        :aria-label="$t('invoices.filters.dateFromLabel')"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         @change="emit('update:dateFrom', ($event.target as HTMLInputElement).value)"
       />
       <input
         :value="dateTo"
         type="date"
-        aria-label="Date de fin"
+        :aria-label="$t('invoices.filters.dateToLabel')"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         @change="emit('update:dateTo', ($event.target as HTMLInputElement).value)"
       />
@@ -101,7 +101,7 @@ async function searchClients(query: string): Promise<Client[]> {
         :value="amountMin"
         type="number"
         min="0"
-        placeholder="Montant min"
+        :placeholder="$t('invoices.filters.amountMinPlaceholder')"
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
         @change="emit('update:amountMin', ($event.target as HTMLInputElement).value)"
       />
@@ -110,15 +110,15 @@ async function searchClients(query: string): Promise<Client[]> {
           :value="amountMax"
           type="number"
           min="0"
-          placeholder="Montant max"
+          :placeholder="$t('invoices.filters.amountMaxPlaceholder')"
           class="focus-ring w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400"
           @change="emit('update:amountMax', ($event.target as HTMLInputElement).value)"
         />
         <button
           type="button"
           class="focus-ring shrink-0 rounded-lg border border-gray-300 p-2 text-gray-500 hover:bg-gray-50"
-          aria-label="Reinitialiser les filtres"
-          title="Reinitialiser les filtres"
+          :aria-label="$t('invoices.filters.resetLabel')"
+          :title="$t('invoices.filters.resetLabel')"
           @click="emit('reset')"
         >
           <RotateCcw class="size-4" />

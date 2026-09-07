@@ -2,12 +2,12 @@ import type { QuoteStatus } from '@/types'
 
 /** Libelles affichables des statuts de devis. */
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
-  draft: 'Brouillon',
-  sent: 'Envoye',
-  accepted: 'Accepte',
-  declined: 'Refuse',
-  expired: 'Expire',
-  converted: 'Converti en facture'
+  draft: 'quoteStatuses.draft',
+  sent: 'quoteStatuses.sent',
+  accepted: 'quoteStatuses.accepted',
+  declined: 'quoteStatuses.declined',
+  expired: 'quoteStatuses.expired',
+  converted: 'quoteStatuses.converted'
 }
 
 /** Variante de `BaseBadge` associee a chaque statut de devis. */

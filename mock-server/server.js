@@ -381,6 +381,16 @@ function daysAgo(n) {
   return d
 }
 
+/** Revoque tous les jetons (acces + rafraichissement) d'un utilisateur, ex. suppression ou desactivation du compte. */
+function revokeUserTokens(userId) {
+  for (const token of [...accessTokens.entries()]) {
+    if (token[1] === userId) accessTokens.delete(token[0])
+  }
+  for (const token of [...refreshTokens.entries()]) {
+    if (token[1] === userId) refreshTokens.delete(token[0])
+  }
+}
+
 function issueTokens(userId) {
   const accessToken = crypto.randomUUID()
   const refreshToken = crypto.randomUUID()
@@ -798,6 +808,15 @@ function requireAuth(req, res, next) {
     return
   }
 
+  // Un compte desactive perd l'acces immediatement : le jeton est revoque
+  // ici au cas ou il aurait survecu (ex. desactive par un autre moyen que
+  // le PATCH ci-dessous, qui revoque deja explicitement).
+  if (user.isActive === false) {
+    accessTokens.delete(token)
+    fail(res, 401, 'ACCOUNT_DEACTIVATED', 'Ce compte a ete desactive.')
+    return
+  }
+
   req.currentUser = user
   req.currentBusiness = businesses.find((b) => b.id === user.businessId)
 
@@ -937,6 +956,11 @@ app.post('/api/v1/auth/login', (req, res) => {
 
   if (!user || user.password !== password) {
     fail(res, 401, 'INVALID_CREDENTIALS', 'Email ou mot de passe incorrect.')
+    return
+  }
+
+  if (user.isActive === false) {
+    fail(res, 403, 'ACCOUNT_DEACTIVATED', 'Ce compte a ete desactive. Contactez le proprietaire du commerce.')
     return
   }
 
@@ -4183,6 +4207,22 @@ function findTeamMember(req) {
   return users.find((u) => u.id === req.params.id && u.businessId === req.currentBusiness.id)
 }
 
+/**
+ * Genere un mot de passe temporaire lisible (10 caracteres) pour un
+ * utilisateur invite : ce serveur factice n'envoie pas d'email
+ * d'invitation, le mot de passe doit donc pouvoir etre lu/retape a la main
+ * par le proprietaire qui le transmet. Exclut les caracteres ambigus
+ * (0/O, 1/l/I...) pour eviter les erreurs de recopie.
+ */
+function generateTemporaryPassword() {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+  let password = ''
+  for (let i = 0; i < 10; i++) {
+    password += alphabet[crypto.randomInt(alphabet.length)]
+  }
+  return password
+}
+
 function validateInvitePayload(payload) {
   const errors = {}
   if (!String(payload.firstName || '').trim()) {
@@ -4239,13 +4279,17 @@ app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), (req, r
   }
 
   const role = payload.role || 'cashier'
+  const temporaryPassword = generateTemporaryPassword()
   const user = {
     id: crypto.randomUUID(),
     businessId: req.currentBusiness.id,
     firstName: payload.firstName.trim(),
     lastName: payload.lastName.trim(),
     email: payload.email.trim(),
-    password: crypto.randomUUID(), // pas de flux d'invitation par email dans ce serveur factice
+    // Pas de flux d'invitation par email dans ce serveur factice : le mot
+    // de passe temporaire est renvoye une fois dans la reponse pour que le
+    // proprietaire le transmette lui-meme (voir UserCredentialsDialog.vue).
+    password: temporaryPassword,
     phone: payload.phone || undefined,
     role,
     permissions: ROLE_PERMISSIONS[role] || [],
@@ -4263,7 +4307,7 @@ app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), (req, r
     `Nouvel utilisateur invite : ${user.firstName} ${user.lastName}`,
     user.createdAt
   )
-  ok(res, publicUser(user))
+  ok(res, { ...publicUser(user), temporaryPassword })
 })
 
 app.patch('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (req, res) => {
@@ -4315,6 +4359,9 @@ app.patch('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (r
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'isActive')) {
     user.isActive = Boolean(payload.isActive)
+    // Un compte desactive perd immediatement l'acces : revoque ses jetons
+    // pour que son prochain appel API echoue en 401 et le deconnecte.
+    if (!user.isActive) revokeUserTokens(user.id)
   }
   if (payload.firstName) user.firstName = payload.firstName.trim()
   if (payload.lastName) user.lastName = payload.lastName.trim()
@@ -4326,6 +4373,35 @@ app.patch('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (r
 
   ok(res, publicUser(user))
 })
+
+/** Regenere le mot de passe temporaire d'un utilisateur (compte perdu/mot de passe egare) et revoque ses sessions en cours. */
+app.post(
+  '/api/v1/users/:id/reset-password',
+  requireAuth,
+  requirePermission('user:manage'),
+  (req, res) => {
+    const user = findTeamMember(req)
+    if (!user) {
+      fail(res, 404, 'NOT_FOUND', 'Utilisateur introuvable.')
+      return
+    }
+    if (user.role === 'owner') {
+      fail(res, 422, 'OWNER_PROTECTED', 'Le proprietaire du compte ne peut pas etre modifie.')
+      return
+    }
+    if (user.id === req.currentUser.id) {
+      fail(res, 422, 'SELF_ACTION_FORBIDDEN', 'Vous ne pouvez pas modifier votre propre compte ici.')
+      return
+    }
+
+    const temporaryPassword = generateTemporaryPassword()
+    user.password = temporaryPassword
+    user.updatedAt = now()
+    revokeUserTokens(user.id)
+
+    ok(res, { ...publicUser(user), temporaryPassword })
+  }
+)
 
 app.delete('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (req, res) => {
   const user = findTeamMember(req)
@@ -4344,12 +4420,7 @@ app.delete('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (
 
   const index = users.findIndex((u) => u.id === user.id)
   users.splice(index, 1)
-  for (const token of [...accessTokens.entries()]) {
-    if (token[1] === user.id) accessTokens.delete(token[0])
-  }
-  for (const token of [...refreshTokens.entries()]) {
-    if (token[1] === user.id) refreshTokens.delete(token[0])
-  }
+  revokeUserTokens(user.id)
   ok(res, null)
 })
 

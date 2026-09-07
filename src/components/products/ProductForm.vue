@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus, Settings2, Trash2 } from 'lucide-vue-next'
 import { computed, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -37,6 +38,8 @@ const emit = defineEmits<{
   cancel: []
   'manage-categories': []
 }>()
+
+const { t } = useI18n()
 
 /**
  * Etat local du formulaire : toujours des chaines (jamais `undefined`/
@@ -126,27 +129,25 @@ function fieldError(field: keyof ProductFormState): string | undefined {
 }
 
 function validate(): boolean {
-  localErrors.name = !isRequired(form.name) ? 'Le nom est requis.' : undefined
-  localErrors.categoryId = !isRequired(form.categoryId) ? 'La categorie est requise.' : undefined
+  localErrors.name = !isRequired(form.name) ? t('products.form.nameRequired') : undefined
+  localErrors.categoryId = !isRequired(form.categoryId)
+    ? t('products.form.categoryRequired')
+    : undefined
 
   const price = Number(form.price)
   localErrors.price =
     !form.price.trim() || !Number.isFinite(price) || price <= 0
-      ? 'Le prix doit etre un nombre positif.'
+      ? t('products.form.priceInvalid')
       : undefined
 
   const taxRate = form.taxRate.trim() === '' ? 0 : Number(form.taxRate)
   localErrors.taxRate =
-    !Number.isFinite(taxRate) || taxRate < 0
-      ? 'La TVA doit etre un nombre positif ou nul.'
-      : undefined
+    !Number.isFinite(taxRate) || taxRate < 0 ? t('products.form.taxRateInvalid') : undefined
 
   if (!isService.value && form.stock.trim() !== '') {
     const stock = Number(form.stock)
     localErrors.stock =
-      !Number.isFinite(stock) || stock < 0
-        ? 'Le stock doit etre un nombre positif ou nul.'
-        : undefined
+      !Number.isFinite(stock) || stock < 0 ? t('products.form.stockInvalid') : undefined
   } else {
     localErrors.stock = undefined
   }
@@ -155,7 +156,7 @@ function validate(): boolean {
     const threshold = Number(form.lowStockThreshold)
     localErrors.lowStockThreshold =
       !Number.isFinite(threshold) || threshold < 0
-        ? 'Le seuil doit etre un nombre positif ou nul.'
+        ? t('products.form.lowStockThresholdInvalid')
         : undefined
   } else {
     localErrors.lowStockThreshold = undefined
@@ -196,28 +197,39 @@ function onSubmit(): void {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
     <div class="grid grid-cols-2 gap-4">
-      <BaseInput v-model="form.name" label="Nom" :error="fieldError('name')" required />
+      <BaseInput
+        v-model="form.name"
+        :label="$t('products.form.nameLabel')"
+        :error="fieldError('name')"
+        required
+      />
 
       <div class="flex flex-col gap-1.5">
-        <label class="text-sm font-medium text-gray-700" for="product-type">Type</label>
+        <label class="text-sm font-medium text-gray-700" for="product-type">{{
+          $t('products.form.typeLabel')
+        }}</label>
         <select
           id="product-type"
           v-model="form.type"
           class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         >
           <option v-for="(label, value) in PRODUCT_TYPE_LABELS" :key="value" :value="value">
-            {{ label }}
+            {{ $t(label) }}
           </option>
         </select>
       </div>
     </div>
 
-    <BaseTextarea v-model="form.description" label="Description" :rows="2" />
+    <BaseTextarea
+      v-model="form.description"
+      :label="$t('products.form.descriptionLabel')"
+      :rows="2"
+    />
 
     <div class="flex flex-col gap-1.5">
       <div class="flex items-center justify-between">
         <label class="text-sm font-medium text-gray-700" for="product-category">
-          Categorie
+          {{ $t('products.form.categoryLabel') }}
           <span class="text-red-500">*</span>
         </label>
         <button
@@ -226,7 +238,7 @@ function onSubmit(): void {
           @click="emit('manage-categories')"
         >
           <Settings2 class="size-3.5" aria-hidden="true" />
-          Gerer les categories
+          {{ $t('products.form.manageCategories') }}
         </button>
       </div>
       <select
@@ -235,13 +247,13 @@ function onSubmit(): void {
         class="focus-ring rounded-lg border px-3 py-2 text-sm text-gray-900"
         :class="fieldError('categoryId') ? 'border-red-400' : 'border-gray-300'"
       >
-        <option value="" disabled>Selectionner une categorie...</option>
+        <option value="" disabled>{{ $t('products.form.selectCategoryPlaceholder') }}</option>
         <option v-for="option in categoryOptions" :key="option.id" :value="option.id">
           {{ '—'.repeat(option.depth) }} {{ option.label }}
         </option>
       </select>
       <p v-if="categoryOptions.length === 0" class="text-sm text-gray-400">
-        Aucune categorie pour l'instant : creez-en une via "Gerer les categories".
+        {{ $t('products.form.noCategoriesHint') }}
       </p>
       <p v-if="fieldError('categoryId')" class="text-sm text-red-600">
         {{ fieldError('categoryId') }}
@@ -252,7 +264,7 @@ function onSubmit(): void {
       <BaseInput
         v-model="form.price"
         type="number"
-        label="Prix"
+        :label="$t('products.form.priceLabel')"
         placeholder="0"
         :error="fieldError('price')"
         required
@@ -260,27 +272,31 @@ function onSubmit(): void {
       <BaseInput
         v-model="form.taxRate"
         type="number"
-        label="TVA (%)"
+        :label="$t('products.form.taxRateLabel')"
         placeholder="0"
         :error="fieldError('taxRate')"
       />
-      <BaseInput v-model="form.sku" label="SKU" :error="fieldError('sku')" />
+      <BaseInput
+        v-model="form.sku"
+        :label="$t('products.form.skuLabel')"
+        :error="fieldError('sku')"
+      />
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <BaseInput
         v-model="form.barcode"
-        label="Code-barres"
-        hint="EAN/UPC, saisi manuellement."
+        :label="$t('products.form.barcodeLabel')"
+        :hint="$t('products.form.barcodeHint')"
         :error="fieldError('barcode')"
       />
       <BaseInput
         v-if="!isService"
         v-model="form.stock"
         type="number"
-        label="Stock"
+        :label="$t('products.form.stockLabel')"
         placeholder="0"
-        hint="Laisser vide si non suivi."
+        :hint="$t('products.form.stockHint')"
         :error="fieldError('stock')"
       />
     </div>
@@ -289,45 +305,47 @@ function onSubmit(): void {
       v-if="!isService"
       v-model="form.lowStockThreshold"
       type="number"
-      label="Seuil d'alerte de stock bas"
-      hint="Vide = seuil par defaut de la plateforme (5 unites)."
+      :label="$t('products.form.lowStockThresholdLabel')"
+      :hint="$t('products.form.lowStockThresholdHint')"
       :error="fieldError('lowStockThreshold')"
     />
 
     <div class="flex flex-col gap-2">
       <div class="flex items-center justify-between">
-        <label class="text-sm font-medium text-gray-700">Tarifs degressifs</label>
+        <label class="text-sm font-medium text-gray-700">{{
+          $t('products.form.priceBreaksLabel')
+        }}</label>
         <button
           type="button"
           class="focus-ring inline-flex items-center gap-1 rounded-lg text-sm font-medium text-primary-600 hover:text-primary-700"
           @click="addPriceBreakRow"
         >
           <Plus class="size-3.5" aria-hidden="true" />
-          Ajouter un palier
+          {{ $t('products.form.addPriceBreak') }}
         </button>
       </div>
       <p class="text-sm text-gray-500">
-        A partir de N unites, le prix indique remplace le prix de base sur les factures.
+        {{ $t('products.form.priceBreaksHint') }}
       </p>
       <div v-for="(row, index) in priceBreakRows" :key="index" class="flex items-center gap-2">
         <input
           v-model="row.minQuantity"
           type="number"
           min="1"
-          placeholder="Quantite min."
+          :placeholder="$t('products.form.minQuantityPlaceholder')"
           class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
         />
         <input
           v-model="row.price"
           type="number"
           min="0"
-          placeholder="Prix unitaire"
+          :placeholder="$t('products.form.unitPricePlaceholder')"
           class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
         />
         <button
           type="button"
           class="focus-ring shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-          aria-label="Supprimer ce palier"
+          :aria-label="$t('products.form.removePriceBreak')"
           @click="removePriceBreakRow(index)"
         >
           <Trash2 class="size-4" />
@@ -337,10 +355,10 @@ function onSubmit(): void {
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
       <BaseButton type="submit" :loading="submitting">
-        {{ product ? 'Enregistrer' : 'Creer le produit' }}
+        {{ product ? $t('common.save') : $t('products.form.submitCreate') }}
       </BaseButton>
     </div>
   </form>

@@ -1,7 +1,7 @@
 import { onUnmounted, ref, watch } from 'vue'
 
 import { useUsersStore } from '@/stores'
-import type { ApiError, CreateUserPayload, Permission, User, UserRole } from '@/types'
+import type { ApiError, CreateUserPayload, InvitedUser, Permission, User, UserRole } from '@/types'
 
 import { usePagination } from './usePagination'
 import { useToast } from './useToast'
@@ -24,6 +24,14 @@ export function useUsers() {
   const isSubmitting = ref(false)
   const isDeleting = ref(false)
   const isUpdatingPermissions = ref(false)
+  const isResettingPassword = ref(false)
+  const isTogglingActive = ref(false)
+  /**
+   * Utilisateur invite (ou dont le mot de passe vient d'etre regenere) avec
+   * son mot de passe temporaire, le temps de l'afficher a l'appelant — voir
+   * `UserCredentialsDialog.vue`. Jamais persiste au-dela de cette session.
+   */
+  const credentialsToShow = ref<InvitedUser | null>(null)
 
   async function load(): Promise<void> {
     await store.fetchUsers({
@@ -72,6 +80,7 @@ export function useUsers() {
     isSubmitting.value = true
     try {
       const user = await store.inviteUser(payload)
+      credentialsToShow.value = user
       toast.success(`${user.firstName} ${user.lastName} a ete invite(e) avec succes.`)
       await load()
       return null
@@ -81,6 +90,22 @@ export function useUsers() {
       return apiError
     } finally {
       isSubmitting.value = false
+    }
+  }
+
+  /** Regenere le mot de passe temporaire d'un utilisateur (compte perdu/mot de passe egare). */
+  async function resetPassword(user: User): Promise<boolean> {
+    isResettingPassword.value = true
+    try {
+      const updated = await store.resetPassword(user.id)
+      credentialsToShow.value = updated
+      toast.success(`Nouveau mot de passe genere pour ${updated.firstName} ${updated.lastName}.`)
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isResettingPassword.value = false
     }
   }
 
@@ -97,6 +122,7 @@ export function useUsers() {
   }
 
   async function toggleActive(user: User): Promise<boolean> {
+    isTogglingActive.value = true
     try {
       await store.updateUser(user.id, { isActive: !user.isActive })
       toast.success(
@@ -109,6 +135,8 @@ export function useUsers() {
     } catch (err) {
       toast.error((err as ApiError).message)
       return false
+    } finally {
+      isTogglingActive.value = false
     }
   }
 
@@ -157,11 +185,15 @@ export function useUsers() {
     isSubmitting,
     isDeleting,
     isUpdatingPermissions,
+    isResettingPassword,
+    isTogglingActive,
+    credentialsToShow,
     load,
     goToPage,
     nextPage,
     prevPage,
     submitInvite,
+    resetPassword,
     changeRole,
     toggleActive,
     updatePermissions,

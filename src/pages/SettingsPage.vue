@@ -102,18 +102,19 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
 
 <template>
   <div>
-    <PageHeader title="Parametres" subtitle="Informations de votre commerce et de votre compte." />
+    <PageHeader :title="$t('settings.title')" :subtitle="$t('settings.subtitle')" />
 
     <div class="flex flex-col gap-4">
-      <BaseCard title="Mon compte">
+      <BaseCard :title="$t('settings.myAccount')">
         <MyAccountCard />
       </BaseCard>
 
       <div v-if="!isOwner" class="rounded-xl border border-red-200 bg-red-50 p-4 sm:p-6">
-        <h2 class="text-sm font-semibold text-red-900">Supprimer mon compte</h2>
+        <h2 class="text-sm font-semibold text-red-900">
+          {{ $t('settings.deleteMyAccountTitle') }}
+        </h2>
         <p class="mt-1 text-sm text-red-700">
-          Supprime definitivement votre compte individuel (vous perdez l'acces a ce commerce). Cette
-          action ne peut pas etre annulee.
+          {{ $t('settings.deleteMyAccountText') }}
         </p>
         <BaseButton
           variant="danger"
@@ -121,11 +122,11 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
           class="mt-3"
           @click="isDeleteMyAccountDialogOpen = true"
         >
-          Supprimer mon compte
+          {{ $t('settings.deleteMyAccountTitle') }}
         </BaseButton>
       </div>
 
-      <BaseCard title="Logo du commerce">
+      <BaseCard :title="$t('settings.logo')">
         <LogoUploader
           :logo-url="business?.logoUrl"
           :business-name="business?.name"
@@ -134,7 +135,7 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard v-if="can('settings:manage')" title="Tampon / signature numerique">
+      <BaseCard v-if="can('settings:manage')" :title="$t('settings.stamp')">
         <LogoUploader
           :logo-url="business?.stampUrl"
           :business-name="business?.name"
@@ -144,7 +145,7 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard v-if="can('settings:manage')" title="Parametres du commerce">
+      <BaseCard v-if="can('settings:manage')" :title="$t('settings.businessSettings')">
         <BusinessForm
           :business="business"
           :submitting="isSaving"
@@ -153,27 +154,27 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard v-else title="Commerce">
+      <BaseCard v-else :title="$t('settings.business')">
         <dl class="space-y-2 text-sm">
           <div class="flex justify-between">
-            <dt class="text-gray-500">Nom</dt>
+            <dt class="text-gray-500">{{ $t('settings.name') }}</dt>
             <dd class="font-medium text-gray-900">{{ business?.name }}</dd>
           </div>
           <div class="flex justify-between">
-            <dt class="text-gray-500">Email</dt>
+            <dt class="text-gray-500">{{ $t('settings.email') }}</dt>
             <dd class="font-medium text-gray-900">{{ business?.email }}</dd>
           </div>
           <div class="flex justify-between">
-            <dt class="text-gray-500">Devise</dt>
+            <dt class="text-gray-500">{{ $t('settings.currency') }}</dt>
             <dd class="font-medium text-gray-900">{{ business?.currency }}</dd>
           </div>
         </dl>
         <p class="mt-4 text-sm text-gray-500">
-          Seul un administrateur peut modifier les parametres du commerce.
+          {{ $t('settings.adminOnly') }}
         </p>
       </BaseCard>
 
-      <BaseCard v-if="can('settings:manage')" title="Developpeur">
+      <BaseCard v-if="can('settings:manage')" :title="$t('settings.developer')">
         <DeveloperSettingsCard
           :business="business"
           :regenerating-key="isRegeneratingApiKey"
@@ -183,14 +184,13 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
         />
       </BaseCard>
 
-      <BaseCard v-if="can('settings:manage')" title="Sauvegarde des donnees">
+      <BaseCard v-if="can('settings:manage')" :title="$t('settings.dataBackup')">
         <p class="mb-3 text-sm text-gray-500">
-          Telechargez une copie complete des donnees de votre commerce (clients, produits, factures,
-          devis, avoirs, paiements, equipe) au format JSON.
+          {{ $t('settings.dataBackupText') }}
         </p>
         <BaseButton variant="outline" :loading="isExporting" @click="exportData">
           <Download class="size-4" aria-hidden="true" />
-          Exporter mes donnees
+          {{ $t('settings.exportData') }}
         </BaseButton>
       </BaseCard>
 
@@ -199,7 +199,7 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
 
     <BaseModal
       :open="isDeleteDialogOpen"
-      title="Supprimer le compte commerce"
+      :title="$t('settings.deleteBusinessTitle')"
       @close="isDeleteDialogOpen = false"
     >
       <DeleteAccountDialog
@@ -213,9 +213,9 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
 
     <ConfirmDialog
       :open="isDeleteMyAccountDialogOpen"
-      title="Supprimer mon compte"
-      message="Voulez-vous vraiment supprimer votre compte individuel ? Vous perdrez immediatement l'acces a ce commerce. Cette action est irreversible."
-      confirm-label="Supprimer mon compte"
+      :title="$t('settings.deleteMyAccountTitle')"
+      :message="$t('settings.confirmDeleteMyAccountMessage')"
+      :confirm-label="$t('settings.deleteMyAccountTitle')"
       variant="danger"
       :loading="isDeletingMyAccount"
       @confirm="onConfirmDeleteMyAccount"

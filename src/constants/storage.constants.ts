@@ -15,6 +15,10 @@ export const STORAGE_KEYS = {
   trialBannerDismissedUntil: 'facture_ia_trial_banner_dismissed_until',
   /** Preferences d'accessibilite (taille de police, contraste eleve) — par navigateur. */
   accessibilityPrefs: 'facture_ia_accessibility_prefs',
+  /** Theme clair/sombre choisi — par navigateur. Absent = suit la preference systeme. */
+  theme: 'facture_ia_theme',
+  /** Langue de l'interface choisie — par navigateur. Absent = francais (pas de detection auto du navigateur, pour rester previsible). */
+  locale: 'facture_ia_locale',
   /** Horodatage de la derniere activite consultee dans le centre de notifications. */
   notificationsLastSeenAt: 'facture_ia_notifications_last_seen_at',
   /** Marque l'onboarding guide comme deja vu, par commerce (cle suffixee par businessId). */

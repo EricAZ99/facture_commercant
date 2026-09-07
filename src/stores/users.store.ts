@@ -7,6 +7,7 @@ import type {
   AsyncStatus,
   CreateUserPayload,
   ID,
+  InvitedUser,
   ListQueryParams,
   PaginationMeta,
   UpdateUserPayload,
@@ -43,8 +44,12 @@ export const useUsersStore = defineStore('users', () => {
     }
   }
 
-  /** Invite un nouvel utilisateur (creation directe dans ce mock, pas de flux d'acceptation par email). */
-  function inviteUser(payload: CreateUserPayload): Promise<User> {
+  /**
+   * Invite un nouvel utilisateur (creation directe dans ce mock, pas de flux
+   * d'acceptation par email) : le mot de passe temporaire genere est renvoye
+   * une seule fois, a charge de l'appelant de l'afficher pour transmission.
+   */
+  function inviteUser(payload: CreateUserPayload): Promise<InvitedUser> {
     return userService.create(payload)
   }
 
@@ -56,6 +61,11 @@ export const useUsersStore = defineStore('users', () => {
     return userService.remove(id)
   }
 
+  /** Regenere le mot de passe temporaire d'un utilisateur existant. */
+  function resetPassword(id: ID): Promise<InvitedUser> {
+    return userService.resetPassword(id)
+  }
+
   return {
     items,
     meta,
@@ -65,6 +75,7 @@ export const useUsersStore = defineStore('users', () => {
     fetchUsers,
     inviteUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    resetPassword
   }
 })

@@ -39,7 +39,7 @@ function onSubmit(): void {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
     <p class="text-sm text-gray-500">
-      Montant de l'echeance :
+      {{ $t('invoices.detail.installmentPayForm.amountLabel') }}
       <span class="font-medium text-gray-900">
         {{ formatCurrency(installment.amount, currency) }}
       </span>
@@ -47,7 +47,7 @@ function onSubmit(): void {
 
     <div class="flex flex-col gap-1.5">
       <label class="text-sm font-medium text-gray-700" for="installment-payment-method">
-        Mode de paiement
+        {{ $t('invoices.form.paymentMethodLabel') }}
       </label>
       <select
         id="installment-payment-method"
@@ -55,21 +55,31 @@ function onSubmit(): void {
         class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
       >
         <option v-for="(label, value) in PAYMENT_METHOD_LABELS" :key="value" :value="value">
-          {{ label }}
+          {{ $t(label) }}
         </option>
       </select>
     </div>
 
     <div class="grid grid-cols-2 gap-4">
-      <BaseInput v-model="form.paidAt" type="date" label="Date d'encaissement" />
-      <BaseInput v-model="form.reference" label="Reference" hint="Optionnel." />
+      <BaseInput
+        v-model="form.paidAt"
+        type="date"
+        :label="$t('invoices.detail.installmentPayForm.dateLabel')"
+      />
+      <BaseInput
+        v-model="form.reference"
+        :label="$t('invoices.detail.referenceLabel')"
+        :hint="$t('invoices.detail.optionalHint')"
+      />
     </div>
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" :loading="submitting">Encaisser l'echeance</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('invoices.detail.installmentPayForm.submit')
+      }}</BaseButton>
     </div>
   </form>
 </template>

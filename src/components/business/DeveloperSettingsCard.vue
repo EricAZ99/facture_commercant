@@ -63,11 +63,10 @@ async function copyKey(): Promise<void> {
   <div class="flex flex-col gap-6">
     <div>
       <p class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-        Cle API developpeur
+        {{ $t('settingsDeveloper.apiKeyTitle') }}
       </p>
       <p class="mb-3 text-sm text-gray-500">
-        A consommer par une future integration cote backend de production. Aucun appel n'est realise
-        avec cette cle par cette demonstration.
+        {{ $t('settingsDeveloper.apiKeyDescription') }}
       </p>
       <div v-if="business?.apiKey" class="flex flex-wrap items-center gap-2">
         <code class="rounded-lg bg-gray-100 px-3 py-1.5 font-mono text-sm text-gray-800">
@@ -80,10 +79,10 @@ async function copyKey(): Promise<void> {
         >
           <Check v-if="isCopied" class="size-4 text-green-600" aria-hidden="true" />
           <Copy v-else class="size-4" aria-hidden="true" />
-          {{ isCopied ? 'Copie !' : 'Copier' }}
+          {{ isCopied ? $t('settingsDeveloper.copied') : $t('settingsDeveloper.copy') }}
         </button>
       </div>
-      <p v-else class="text-sm text-gray-400">Aucune cle generee pour le moment.</p>
+      <p v-else class="text-sm text-gray-400">{{ $t('settingsDeveloper.noKeyGenerated') }}</p>
       <BaseButton
         variant="outline"
         size="sm"
@@ -92,7 +91,11 @@ async function copyKey(): Promise<void> {
         @click="emit('regenerateKey')"
       >
         <RefreshCw v-if="!regeneratingKey" class="size-4" aria-hidden="true" />
-        {{ business?.apiKey ? 'Regenerer la cle' : 'Generer une cle' }}
+        {{
+          business?.apiKey
+            ? $t('settingsDeveloper.regenerateKey')
+            : $t('settingsDeveloper.generateKey')
+        }}
       </BaseButton>
     </div>
 
@@ -100,11 +103,13 @@ async function copyKey(): Promise<void> {
       class="flex flex-col gap-3 border-t border-gray-100 pt-4"
       @submit.prevent="onSubmitWebhook"
     >
-      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Webhook</p>
+      <p class="text-xs font-medium uppercase tracking-wide text-gray-500">
+        {{ $t('settingsDeveloper.webhookTitle') }}
+      </p>
       <BaseInput
         v-model="form.webhookUrl"
         type="url"
-        label="URL de destination"
+        :label="$t('settingsDeveloper.webhookUrlLabel')"
         placeholder="https://votre-service.com/webhooks/facture-ia"
       />
       <div class="flex flex-col gap-1.5">
@@ -125,7 +130,7 @@ async function copyKey(): Promise<void> {
       <div class="flex justify-end">
         <BaseButton type="submit" size="sm" variant="outline" :loading="savingWebhook">
           <KeyRound class="size-4" aria-hidden="true" />
-          Enregistrer le webhook
+          {{ $t('settingsDeveloper.saveWebhook') }}
         </BaseButton>
       </div>
     </form>

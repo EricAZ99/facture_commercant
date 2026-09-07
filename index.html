@@ -7,6 +7,24 @@
     <meta name="theme-color" content="#2563eb" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Facture IA</title>
+    <script>
+      // Applique le theme avant le premier rendu, pour eviter un flash de
+      // theme clair suivi d'un bascule vers le sombre. Doit rester en JS
+      // inline synchrone (pas dans un module Vue, charge trop tard) et
+      // dupliquer volontairement la cle de `STORAGE_KEYS.theme` (non
+      // importable ici) et la logique de `useTheme.ts`.
+      ;(function () {
+        try {
+          var stored = window.localStorage.getItem('facture_ia_theme')
+          var isDark =
+            stored === 'dark' ||
+            (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          if (isDark) document.documentElement.classList.add('dark')
+        } catch (e) {
+          // Stockage indisponible : reste en theme clair par defaut.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="app"></div>

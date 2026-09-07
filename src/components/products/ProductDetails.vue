@@ -47,7 +47,7 @@ const emit = defineEmits<{
         </div>
       </div>
       <BaseBadge :variant="product.type === 'service' ? 'info' : 'default'">
-        {{ PRODUCT_TYPE_LABELS[product.type] }}
+        {{ $t(PRODUCT_TYPE_LABELS[product.type]) }}
       </BaseBadge>
     </div>
 

@@ -17,12 +17,24 @@ withDefaults(defineProps<Props>(), { currency: 'XOF', hideInvoiceColumn: false }
     <table class="w-full text-left text-sm">
       <thead>
         <tr class="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-          <th class="py-2 pr-4 font-medium">Numero</th>
-          <th v-if="!hideInvoiceColumn" class="py-2 pr-4 font-medium">Facture</th>
-          <th class="py-2 pr-4 font-medium">Client</th>
-          <th class="py-2 pr-4 font-medium">Date</th>
-          <th class="py-2 pr-4 font-medium">Motif</th>
-          <th class="py-2 pl-4 text-right font-medium">Montant</th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnNumber') }}
+          </th>
+          <th v-if="!hideInvoiceColumn" class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnInvoice') }}
+          </th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnClient') }}
+          </th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnDate') }}
+          </th>
+          <th class="py-2 pr-4 font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnReason') }}
+          </th>
+          <th class="py-2 pl-4 text-right font-medium">
+            {{ $t('invoices.detail.creditNoteList.columnAmount') }}
+          </th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">

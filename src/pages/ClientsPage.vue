@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseCard from '@/components/base/BaseCard.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
+import BulkActionBar from '@/components/base/BulkActionBar.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import ClientForm from '@/components/clients/ClientForm.vue'
 import ClientImportDialog from '@/components/clients/ClientImportDialog.vue'
@@ -30,6 +31,7 @@ const {
   isExporting,
   isImporting,
   isMerging,
+  isBulkDeleting,
   load,
   nextPage,
   prevPage,
@@ -37,11 +39,30 @@ const {
   submitUpdate,
   removeClient,
   exportClients,
+  exportSelectedClients,
+  bulkDeleteClients,
   importClientsFromCsv,
   mergeClients
 } = useClients()
 
 onMounted(() => load())
+
+// --- Sélection multiple --------------------------------------------------
+
+const selection = ref<string[]>([])
+
+function clearSelection(): void {
+  selection.value = []
+}
+
+async function onBulkAction(action: string): Promise<void> {
+  if (action === 'export') {
+    await exportSelectedClients(selection.value)
+  } else if (action === 'delete') {
+    const ok = await bulkDeleteClients(selection.value)
+    if (ok) clearSelection()
+  }
+}
 
 // --- Import / export / fusion --------------------------------------------
 
@@ -127,11 +148,11 @@ function viewClient(client: Client): void {
 
 <template>
   <div>
-    <PageHeader title="Clients" subtitle="Gerez les clients de votre commerce.">
+    <PageHeader :title="$t('clients.title')" :subtitle="$t('clients.subtitle')">
       <template #actions>
         <BaseButton variant="outline" :loading="isExporting" @click="exportClients">
           <Download v-if="!isExporting" class="size-4" aria-hidden="true" />
-          Exporter
+          {{ $t('common.export') }}
         </BaseButton>
         <BaseButton
           v-if="can('client:create')"
@@ -139,15 +160,15 @@ function viewClient(client: Client): void {
           @click="isImportDialogOpen = true"
         >
           <Upload class="size-4" aria-hidden="true" />
-          Importer
+          {{ $t('clients.import') }}
         </BaseButton>
         <BaseButton v-if="can('client:update')" variant="outline" @click="isMergeDialogOpen = true">
           <GitMerge class="size-4" aria-hidden="true" />
-          Fusionner
+          {{ $t('clients.merge') }}
         </BaseButton>
         <BaseButton v-if="can('client:create')" @click="openCreateForm">
           <Plus class="size-4" aria-hidden="true" />
-          Nouveau client
+          {{ $t('clients.newClient') }}
         </BaseButton>
       </template>
     </PageHeader>
@@ -161,7 +182,7 @@ function viewClient(client: Client): void {
           <input
             v-model="search"
             type="search"
-            placeholder="Rechercher un client..."
+            :placeholder="$t('clients.searchPlaceholder')"
             class="focus-ring w-full rounded-lg border border-gray-300 py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400"
           />
         </div>
@@ -169,7 +190,7 @@ function viewClient(client: Client): void {
 
       <LoadingState
         v-if="store.isLoading && store.items.length === 0"
-        message="Chargement des clients..."
+        :message="$t('clients.loading')"
       />
       <ErrorState
         v-else-if="store.status === 'error' && store.items.length === 0"
@@ -179,26 +200,24 @@ function viewClient(client: Client): void {
       <EmptyState
         v-else-if="store.items.length === 0"
         :icon="Users"
-        title="Aucun client"
-        :message="
-          search
-            ? 'Aucun resultat pour cette recherche.'
-            : 'Ajoutez votre premier client pour commencer.'
-        "
+        :title="$t('clients.emptyTitle')"
+        :message="search ? $t('clients.emptyMessageSearch') : $t('clients.emptyMessageDefault')"
       />
 
       <template v-else>
         <ClientList
           :clients="store.items"
+          :selection="selection"
           @view="viewClient"
           @edit="openEditForm"
           @delete="askDelete"
+          @update:selection="selection = $event"
         />
 
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-4 text-sm text-gray-500"
         >
-          <p>{{ store.meta.total }} client(s)</p>
+          <p>{{ $t('clients.count', { count: store.meta.total }) }}</p>
           <div class="flex items-center gap-2">
             <BaseButton
               variant="outline"
@@ -206,7 +225,7 @@ function viewClient(client: Client): void {
               :disabled="!pagination.hasPrevPage.value"
               @click="prevPage"
             >
-              Precedent
+              {{ $t('common.previous') }}
             </BaseButton>
             <span>Page {{ pagination.page.value }} / {{ pagination.totalPages.value }}</span>
             <BaseButton
@@ -215,7 +234,7 @@ function viewClient(client: Client): void {
               :disabled="!pagination.hasNextPage.value"
               @click="nextPage"
             >
-              Suivant
+              {{ $t('common.next') }}
             </BaseButton>
           </div>
         </div>
@@ -224,7 +243,7 @@ function viewClient(client: Client): void {
 
     <BaseModal
       :open="isFormOpen"
-      :title="editingClient ? 'Modifier le client' : 'Nouveau client'"
+      :title="editingClient ? $t('clients.editTitle') : $t('clients.newClient')"
       @close="closeForm"
     >
       <ClientForm
@@ -238,13 +257,15 @@ function viewClient(client: Client): void {
 
     <ConfirmDialog
       :open="clientPendingDelete !== null"
-      title="Supprimer le client"
+      :title="$t('clients.confirmDeleteTitle')"
       :message="
         clientPendingDelete
-          ? `Voulez-vous vraiment supprimer ${clientPendingDelete.firstName} ${clientPendingDelete.lastName} ? Cette action est irreversible.`
+          ? $t('clients.confirmDeleteMessage', {
+              name: `${clientPendingDelete.firstName} ${clientPendingDelete.lastName}`
+            })
           : ''
       "
-      confirm-label="Supprimer"
+      :confirm-label="$t('common.delete')"
       :loading="isDeleting"
       @confirm="confirmDelete"
       @cancel="cancelDelete"
@@ -263,6 +284,25 @@ function viewClient(client: Client): void {
       :submitting="isMerging"
       @merge="onMerge"
       @close="isMergeDialogOpen = false"
+    />
+
+    <BulkActionBar
+      :count="selection.length"
+      :actions="[
+        { label: $t('common.export'), emit: 'export', variant: 'outline', loading: isExporting },
+        ...(can('client:delete')
+          ? [
+              {
+                label: $t('common.delete'),
+                emit: 'delete',
+                variant: 'danger' as const,
+                loading: isBulkDeleting
+              }
+            ]
+          : [])
+      ]"
+      @action="onBulkAction"
+      @clear="clearSelection"
     />
   </div>
 </template>

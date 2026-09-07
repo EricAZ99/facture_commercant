@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import BaseButton from '@/components/base/BaseButton.vue'
 import type { CreateInstallmentPlanPayload } from '@/types'
@@ -22,6 +23,8 @@ const emit = defineEmits<{
   submit: [payload: CreateInstallmentPlanPayload]
   cancel: []
 }>()
+
+const { t } = useI18n()
 
 interface Row {
   dueDate: string
@@ -66,11 +69,11 @@ function fieldError(): string | undefined {
 
 function onSubmit(): void {
   if (!totalMatches.value) {
-    localError.installments = 'La somme des echeances doit correspondre au solde restant.'
+    localError.installments = t('invoices.detail.installmentPlanForm.sumMismatch')
     return
   }
   if (rows.some((row) => !row.dueDate || !(Number(row.amount) > 0))) {
-    localError.installments = 'Chaque echeance doit avoir une date et un montant positif.'
+    localError.installments = t('invoices.detail.installmentPlanForm.invalidRow')
     return
   }
   localError.installments = undefined
@@ -84,7 +87,7 @@ function onSubmit(): void {
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
     <p class="text-sm text-gray-500">
-      Solde a repartir :
+      {{ $t('invoices.detail.installmentPlanForm.balanceToSplit') }}
       <span class="font-medium text-gray-900">
         {{ formatCurrency(remainingBalance, currency) }}
       </span>
@@ -92,7 +95,7 @@ function onSubmit(): void {
 
     <div class="flex items-center gap-2">
       <label class="text-sm font-medium text-gray-700" for="installment-count">
-        Nombre d'echeances
+        {{ $t('invoices.detail.installmentPlanForm.installmentCountLabel') }}
       </label>
       <select
         id="installment-count"
@@ -121,15 +124,19 @@ function onSubmit(): void {
     </div>
 
     <p class="text-right text-sm" :class="totalMatches ? 'text-gray-500' : 'text-red-600'">
-      Total : {{ formatCurrency(total, currency) }}
+      {{
+        $t('invoices.detail.installmentPlanForm.total', { amount: formatCurrency(total, currency) })
+      }}
     </p>
     <p v-if="fieldError()" class="text-sm text-red-600">{{ fieldError() }}</p>
 
     <div class="mt-2 flex justify-end gap-2">
       <BaseButton type="button" variant="outline" :disabled="submitting" @click="emit('cancel')">
-        Annuler
+        {{ $t('common.cancel') }}
       </BaseButton>
-      <BaseButton type="submit" :loading="submitting">Creer l'echeancier</BaseButton>
+      <BaseButton type="submit" :loading="submitting">{{
+        $t('invoices.detail.installmentPlanForm.submit')
+      }}</BaseButton>
     </div>
   </form>
 </template>

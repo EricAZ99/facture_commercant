@@ -43,19 +43,19 @@ async function copyLink(): Promise<void> {
 </script>
 
 <template>
-  <BaseModal :open="open" title="Lien public de la facture" @close="emit('close')">
+  <BaseModal :open="open" :title="$t('invoices.detail.shareDialog.title')" @close="emit('close')">
     <div class="flex flex-col items-center gap-4">
       <p class="text-center text-sm text-gray-500">
-        Ce lien permet a votre client de consulter et telecharger sa facture sans se connecter.
+        {{ $t('invoices.detail.shareDialog.description') }}
       </p>
 
-      <LoadingState v-if="isLoading" message="Generation du lien..." />
+      <LoadingState v-if="isLoading" :message="$t('invoices.detail.shareDialog.generating')" />
 
       <template v-else-if="shareUrl">
         <img
           v-if="qrDataUrl"
           :src="qrDataUrl"
-          alt="QR code du lien public de la facture"
+          :alt="$t('invoices.detail.shareDialog.qrAlt')"
           class="size-44 rounded-lg border border-gray-200"
         />
 
@@ -74,7 +74,9 @@ async function copyLink(): Promise<void> {
       </template>
 
       <div class="mt-2 flex w-full justify-end">
-        <BaseButton variant="outline" @click="emit('close')">Fermer</BaseButton>
+        <BaseButton variant="outline" @click="emit('close')">{{
+          $t('invoices.detail.close')
+        }}</BaseButton>
       </div>
     </div>
   </BaseModal>

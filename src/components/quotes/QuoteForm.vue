@@ -67,25 +67,25 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
 
 <template>
   <div class="flex flex-col gap-6">
-    <BaseCard title="Client">
+    <BaseCard :title="$t('invoices.form.clientSectionTitle')">
       <SearchableSelect
         :search="searchClients"
         :get-label="clientLabel"
         :get-key="(c: Client) => c.id"
         :selected="builder.client.value"
-        placeholder="Rechercher un client par nom, email ou telephone..."
+        :placeholder="$t('invoices.form.clientSearchPlaceholder')"
         @select="builder.setClient"
         @clear="builder.setClient(null)"
       />
     </BaseCard>
 
-    <BaseCard title="Produits & services">
+    <BaseCard :title="$t('invoices.form.productsSectionTitle')">
       <SearchableSelect
         :search="searchProducts"
         :get-label="productLabel"
         :get-key="(p: Product) => p.id"
         clear-on-select
-        placeholder="Rechercher un produit ou service a ajouter..."
+        :placeholder="$t('invoices.form.productSearchPlaceholder')"
         @select="builder.addProduct"
       />
 
@@ -94,16 +94,16 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           v-if="builder.lines.value.length > 0"
           class="grid grid-cols-12 gap-2 border-b border-gray-200 pb-2 text-xs font-medium uppercase tracking-wide text-gray-500"
         >
-          <span class="col-span-5">Description</span>
-          <span class="col-span-2 text-right">Qte</span>
-          <span class="col-span-2 text-right">Prix</span>
-          <span class="col-span-1 text-right">TVA %</span>
-          <span class="col-span-1 text-right">Total</span>
+          <span class="col-span-5">{{ $t('invoices.form.columnDescription') }}</span>
+          <span class="col-span-2 text-right">{{ $t('invoices.form.columnQuantity') }}</span>
+          <span class="col-span-2 text-right">{{ $t('invoices.form.columnPrice') }}</span>
+          <span class="col-span-1 text-right">{{ $t('invoices.form.columnTax') }}</span>
+          <span class="col-span-1 text-right">{{ $t('invoices.form.columnLineTotal') }}</span>
           <span class="col-span-1"></span>
         </div>
 
         <div v-if="builder.lines.value.length === 0" class="py-6 text-center text-sm text-gray-400">
-          Aucune ligne. Recherchez un produit ci-dessus ou ajoutez une ligne libre.
+          {{ $t('invoices.form.noLines') }}
         </div>
         <div v-else class="divide-y divide-gray-100">
           <InvoiceItemRow
@@ -122,23 +122,31 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           @click="builder.addLine()"
         >
           <Plus class="size-4" aria-hidden="true" />
-          Ligne libre
+          {{ $t('invoices.form.addFreeLine') }}
         </button>
       </div>
     </BaseCard>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <BaseCard title="Details">
+      <BaseCard :title="$t('invoices.form.detailsSectionTitle')">
         <div class="flex flex-col gap-4">
           <div class="grid grid-cols-2 gap-4">
-            <BaseInput v-model="builder.issueDate.value" label="Date d'emission" type="date" />
-            <BaseInput v-model="builder.expiryDate.value" label="Valide jusqu'au" type="date" />
+            <BaseInput
+              v-model="builder.issueDate.value"
+              :label="$t('invoices.form.issueDateLabel')"
+              type="date"
+            />
+            <BaseInput
+              v-model="builder.expiryDate.value"
+              :label="$t('quotes.form.expiryDateLabel')"
+              type="date"
+            />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div class="flex flex-col gap-1.5">
               <label class="text-sm font-medium text-gray-700" for="quote-discount-type">
-                Type de remise
+                {{ $t('invoices.form.discountTypeLabel') }}
               </label>
               <select
                 id="quote-discount-type"
@@ -146,7 +154,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
                 class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
               >
                 <option v-for="(label, value) in DISCOUNT_TYPE_LABELS" :key="value" :value="value">
-                  {{ label }}
+                  {{ $t(label) }}
                 </option>
               </select>
             </div>
@@ -155,16 +163,22 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
               type="number"
               min="0"
               :label="
-                builder.discountType.value === 'percentage' ? 'Remise (%)' : `Remise (${currency})`
+                builder.discountType.value === 'percentage'
+                  ? $t('invoices.form.discountValuePercentLabel')
+                  : $t('invoices.form.discountValueAmountLabel', { currency })
               "
             />
           </div>
 
-          <BaseTextarea v-model="builder.notes.value" label="Notes" :rows="2" />
+          <BaseTextarea
+            v-model="builder.notes.value"
+            :label="$t('invoices.form.notesLabel')"
+            :rows="2"
+          />
         </div>
       </BaseCard>
 
-      <BaseCard title="Recapitulatif">
+      <BaseCard :title="$t('invoices.form.summarySectionTitle')">
         <InvoiceSummary
           :totals="builder.totals.value"
           :discount-type="builder.discountType.value"
@@ -188,7 +202,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             :disabled="builder.isSubmitting.value"
             @click="emit('cancel')"
           >
-            Annuler
+            {{ $t('common.cancel') }}
           </BaseButton>
           <BaseButton
             variant="outline"
@@ -198,8 +212,8 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           >
             {{
               builder.isEditing.value
-                ? 'Enregistrer les modifications'
-                : 'Enregistrer comme brouillon'
+                ? $t('invoices.form.saveChanges')
+                : $t('invoices.form.saveDraft')
             }}
           </BaseButton>
           <BaseButton
@@ -207,7 +221,11 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             :disabled="builder.isSubmitting.value"
             @click="onSubmit('final')"
           >
-            {{ builder.isEditing.value ? 'Finaliser et envoyer' : 'Creer le devis' }}
+            {{
+              builder.isEditing.value
+                ? $t('invoices.form.finalizeAndSend')
+                : $t('quotes.form.submitCreate')
+            }}
           </BaseButton>
         </div>
       </BaseCard>

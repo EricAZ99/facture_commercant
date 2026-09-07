@@ -49,8 +49,7 @@ function onSubmit(): void {
 <template>
   <div class="flex flex-col gap-4">
     <p class="text-sm text-gray-500">
-      Personnalisez les permissions de {{ user.firstName }} {{ user.lastName }}, au-dela du jeu par
-      defaut de son role.
+      {{ $t('users.permissions.intro', { name: `${user.firstName} ${user.lastName}` }) }}
     </p>
 
     <div class="flex max-h-96 flex-col gap-4 overflow-y-auto pr-1">
@@ -82,13 +81,13 @@ function onSubmit(): void {
         class="focus-ring rounded text-sm font-medium text-primary-600 hover:text-primary-700"
         @click="resetToRoleDefaults"
       >
-        Reinitialiser aux permissions du role
+        {{ $t('users.permissions.resetToRoleDefaults') }}
       </button>
       <div class="flex gap-2">
         <BaseButton variant="outline" :disabled="submitting" @click="emit('cancel')">
-          Annuler
+          {{ $t('common.cancel') }}
         </BaseButton>
-        <BaseButton :loading="submitting" @click="onSubmit">Enregistrer</BaseButton>
+        <BaseButton :loading="submitting" @click="onSubmit">{{ $t('common.save') }}</BaseButton>
       </div>
     </div>
   </div>

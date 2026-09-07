@@ -40,14 +40,14 @@ function onFileChange(event: Event): void {
       @click="fileInput?.click()"
     >
       <Upload v-if="!isUploading" class="size-4" aria-hidden="true" />
-      Ajouter une piece jointe
+      {{ $t('invoices.detail.attachments.add') }}
     </BaseButton>
 
     <EmptyState
       v-if="attachments.length === 0"
       :icon="Paperclip"
-      title="Aucune piece jointe"
-      message="Ajoutez un devis fournisseur, un bon signe ou tout autre document utile a cette facture."
+      :title="$t('invoices.detail.attachments.emptyTitle')"
+      :message="$t('invoices.detail.attachments.emptyMessage')"
     />
     <ul v-else class="flex flex-col divide-y divide-gray-100">
       <li
@@ -71,14 +71,14 @@ function onFileChange(event: Event): void {
             target="_blank"
             rel="noopener noreferrer"
             class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            aria-label="Telecharger"
+            :aria-label="$t('invoices.list.download')"
           >
             <Download class="size-4" />
           </a>
           <button
             type="button"
             class="focus-ring rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-            aria-label="Supprimer"
+            :aria-label="$t('common.delete')"
             :disabled="removingId === attachment.id"
             @click="emit('remove', attachment)"
           >

@@ -80,7 +80,7 @@ onMounted(() => load())
             </div>
           </div>
           <BaseBadge :variant="INVOICE_STATUS_BADGE_VARIANT[invoice.status]">
-            {{ INVOICE_STATUS_LABELS[invoice.status] }}
+            {{ $t(INVOICE_STATUS_LABELS[invoice.status]) }}
           </BaseBadge>
         </div>
 

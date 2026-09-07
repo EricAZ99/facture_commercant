@@ -68,25 +68,25 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
 
 <template>
   <div class="flex flex-col gap-6">
-    <BaseCard title="Client">
+    <BaseCard :title="$t('invoices.form.clientSectionTitle')">
       <SearchableSelect
         :search="searchClients"
         :get-label="clientLabel"
         :get-key="(c: Client) => c.id"
         :selected="builder.client.value"
-        placeholder="Rechercher un client par nom, email ou telephone..."
+        :placeholder="$t('invoices.form.clientSearchPlaceholder')"
         @select="builder.setClient"
         @clear="builder.setClient(null)"
       />
     </BaseCard>
 
-    <BaseCard title="Produits & services">
+    <BaseCard :title="$t('invoices.form.productsSectionTitle')">
       <SearchableSelect
         :search="searchProducts"
         :get-label="productLabel"
         :get-key="(p: Product) => p.id"
         clear-on-select
-        placeholder="Rechercher un produit ou service a ajouter..."
+        :placeholder="$t('invoices.form.productSearchPlaceholder')"
         @select="builder.addProduct"
       />
 
@@ -95,16 +95,16 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           v-if="builder.lines.value.length > 0"
           class="grid grid-cols-12 gap-2 border-b border-gray-200 pb-2 text-xs font-medium uppercase tracking-wide text-gray-500"
         >
-          <span class="col-span-5">Description</span>
-          <span class="col-span-2 text-right">Qte</span>
-          <span class="col-span-2 text-right">Prix</span>
-          <span class="col-span-1 text-right">TVA %</span>
-          <span class="col-span-1 text-right">Total</span>
+          <span class="col-span-5">{{ $t('invoices.form.columnDescription') }}</span>
+          <span class="col-span-2 text-right">{{ $t('invoices.form.columnQuantity') }}</span>
+          <span class="col-span-2 text-right">{{ $t('invoices.form.columnPrice') }}</span>
+          <span class="col-span-1 text-right">{{ $t('invoices.form.columnTax') }}</span>
+          <span class="col-span-1 text-right">{{ $t('invoices.form.columnLineTotal') }}</span>
           <span class="col-span-1"></span>
         </div>
 
         <div v-if="builder.lines.value.length === 0" class="py-6 text-center text-sm text-gray-400">
-          Aucune ligne. Recherchez un produit ci-dessus ou ajoutez une ligne libre.
+          {{ $t('invoices.form.noLines') }}
         </div>
         <div v-else class="divide-y divide-gray-100">
           <InvoiceItemRow
@@ -123,23 +123,31 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           @click="builder.addLine()"
         >
           <Plus class="size-4" aria-hidden="true" />
-          Ligne libre
+          {{ $t('invoices.form.addFreeLine') }}
         </button>
       </div>
     </BaseCard>
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <BaseCard title="Details">
+      <BaseCard :title="$t('invoices.form.detailsSectionTitle')">
         <div class="flex flex-col gap-4">
           <div class="grid grid-cols-2 gap-4">
-            <BaseInput v-model="builder.issueDate.value" label="Date d'emission" type="date" />
-            <BaseInput v-model="builder.dueDate.value" label="Date d'echeance" type="date" />
+            <BaseInput
+              v-model="builder.issueDate.value"
+              :label="$t('invoices.form.issueDateLabel')"
+              type="date"
+            />
+            <BaseInput
+              v-model="builder.dueDate.value"
+              :label="$t('invoices.form.dueDateLabel')"
+              type="date"
+            />
           </div>
 
           <div class="grid grid-cols-2 gap-4">
             <div class="flex flex-col gap-1.5">
               <label class="text-sm font-medium text-gray-700" for="discount-type">
-                Type de remise
+                {{ $t('invoices.form.discountTypeLabel') }}
               </label>
               <select
                 id="discount-type"
@@ -147,7 +155,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
                 class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
               >
                 <option v-for="(label, value) in DISCOUNT_TYPE_LABELS" :key="value" :value="value">
-                  {{ label }}
+                  {{ $t(label) }}
                 </option>
               </select>
             </div>
@@ -156,48 +164,56 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
               type="number"
               min="0"
               :label="
-                builder.discountType.value === 'percentage' ? 'Remise (%)' : `Remise (${currency})`
+                builder.discountType.value === 'percentage'
+                  ? $t('invoices.form.discountValuePercentLabel')
+                  : $t('invoices.form.discountValueAmountLabel', { currency })
               "
             />
           </div>
 
           <div class="flex flex-col gap-1.5">
             <label class="text-sm font-medium text-gray-700" for="payment-method">
-              Mode de paiement
+              {{ $t('invoices.form.paymentMethodLabel') }}
             </label>
             <select
               id="payment-method"
               v-model="builder.paymentMethod.value"
               class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
             >
-              <option value="">A encaisser plus tard</option>
+              <option value="">{{ $t('invoices.form.payLaterOption') }}</option>
               <option v-for="(label, value) in PAYMENT_METHOD_LABELS" :key="value" :value="value">
-                {{ label }}
+                {{ $t(label) }}
               </option>
             </select>
             <p class="text-sm text-gray-500">
-              Si renseigne, la facture est immediatement marquee payee via ce moyen de paiement.
+              {{ $t('invoices.form.paymentMethodHint') }}
             </p>
           </div>
 
-          <BaseTextarea v-model="builder.notes.value" label="Notes" :rows="2" />
+          <BaseTextarea
+            v-model="builder.notes.value"
+            :label="$t('invoices.form.notesLabel')"
+            :rows="2"
+          />
           <BaseTextarea
             v-model="builder.internalNotes.value"
-            label="Notes internes"
-            hint="Visibles uniquement par votre equipe : jamais sur le PDF ni le lien public envoye au client."
+            :label="$t('invoices.form.internalNotesLabel')"
+            :hint="$t('invoices.form.internalNotesHint')"
             :rows="2"
           />
 
           <div class="flex flex-col gap-2">
             <div class="flex items-center justify-between">
-              <label class="text-sm font-medium text-gray-700">Champs personnalises</label>
+              <label class="text-sm font-medium text-gray-700">{{
+                $t('invoices.form.customFieldsLabel')
+              }}</label>
               <button
                 type="button"
                 class="focus-ring inline-flex items-center gap-1 rounded-lg text-sm font-medium text-primary-600 hover:text-primary-700"
                 @click="builder.addCustomField()"
               >
                 <Plus class="size-3.5" aria-hidden="true" />
-                Ajouter un champ
+                {{ $t('invoices.form.addCustomField') }}
               </button>
             </div>
             <div
@@ -208,19 +224,19 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
               <input
                 v-model="field.label"
                 type="text"
-                placeholder="Libelle (ex: Reference commande)"
+                :placeholder="$t('invoices.form.customFieldLabelPlaceholder')"
                 class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
               />
               <input
                 v-model="field.value"
                 type="text"
-                placeholder="Valeur"
+                :placeholder="$t('invoices.form.customFieldValuePlaceholder')"
                 class="focus-ring w-1/2 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-900"
               />
               <button
                 type="button"
                 class="focus-ring shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                aria-label="Supprimer ce champ"
+                :aria-label="$t('invoices.form.removeCustomField')"
                 @click="builder.removeCustomField(index)"
               >
                 <Trash2 class="size-4" />
@@ -230,7 +246,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
         </div>
       </BaseCard>
 
-      <BaseCard title="Recapitulatif">
+      <BaseCard :title="$t('invoices.form.summarySectionTitle')">
         <InvoiceSummary
           :totals="builder.totals.value"
           :discount-type="builder.discountType.value"
@@ -254,7 +270,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             :disabled="builder.isSubmitting.value"
             @click="emit('cancel')"
           >
-            Annuler
+            {{ $t('common.cancel') }}
           </BaseButton>
           <BaseButton
             type="button"
@@ -264,7 +280,7 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             @click="builder.previewPdf()"
           >
             <Eye v-if="!builder.isPreviewingPdf.value" class="size-4" aria-hidden="true" />
-            Apercu PDF
+            {{ $t('invoices.form.previewPdf') }}
           </BaseButton>
           <BaseButton
             variant="outline"
@@ -274,8 +290,8 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
           >
             {{
               builder.isEditing.value
-                ? 'Enregistrer les modifications'
-                : 'Enregistrer comme brouillon'
+                ? $t('invoices.form.saveChanges')
+                : $t('invoices.form.saveDraft')
             }}
           </BaseButton>
           <BaseButton
@@ -283,7 +299,11 @@ async function onSubmit(mode: 'draft' | 'final'): Promise<void> {
             :disabled="builder.isSubmitting.value"
             @click="onSubmit('final')"
           >
-            {{ builder.isEditing.value ? 'Finaliser et envoyer' : 'Creer la facture' }}
+            {{
+              builder.isEditing.value
+                ? $t('invoices.form.finalizeAndSend')
+                : $t('invoices.form.createInvoiceSubmit')
+            }}
           </BaseButton>
         </div>
       </BaseCard>

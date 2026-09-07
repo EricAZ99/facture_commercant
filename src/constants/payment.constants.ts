@@ -2,11 +2,11 @@ import type { InstallmentStatus, InvoicePaymentStatus, PaymentMethod, PaymentSta
 
 /** Libelles affichables des moyens de paiement. */
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  cash: 'Especes',
-  card: 'Carte bancaire',
-  bank_transfer: 'Virement bancaire',
-  mobile_money: 'Mobile Money',
-  other: 'Autre'
+  cash: 'paymentMethods.cash',
+  card: 'paymentMethods.card',
+  bank_transfer: 'paymentMethods.bank_transfer',
+  mobile_money: 'paymentMethods.mobile_money',
+  other: 'paymentMethods.other'
 }
 
 /** Couleurs (classes Tailwind) associees a chaque moyen de paiement dans les graphiques. */
@@ -20,10 +20,10 @@ export const PAYMENT_METHOD_COLORS: Record<PaymentMethod, string> = {
 
 /** Libelles affichables du statut d'un paiement individuel. */
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
-  pending: 'En attente',
-  completed: 'Complete',
-  failed: 'Echoue',
-  refunded: 'Rembourse'
+  pending: 'paymentStatuses.pending',
+  completed: 'paymentStatuses.completed',
+  failed: 'paymentStatuses.failed',
+  refunded: 'paymentStatuses.refunded'
 }
 
 /** Variante de `BaseBadge` associee au statut d'un paiement individuel. */
@@ -39,9 +39,9 @@ export const PAYMENT_STATUS_BADGE_VARIANT: Record<
 
 /** Libelles affichables du statut de paiement d'une facture (montant paye vs total). */
 export const INVOICE_PAYMENT_STATUS_LABELS: Record<InvoicePaymentStatus, string> = {
-  unpaid: 'Non payee',
-  partially_paid: 'Partiellement payee',
-  paid: 'Payee'
+  unpaid: 'invoicePaymentStatuses.unpaid',
+  partially_paid: 'invoicePaymentStatuses.partially_paid',
+  paid: 'invoicePaymentStatuses.paid'
 }
 
 /** Variante de `BaseBadge` associee au statut de paiement d'une facture. */
@@ -56,9 +56,9 @@ export const INVOICE_PAYMENT_STATUS_BADGE_VARIANT: Record<
 
 /** Libelles affichables du statut d'une echeance d'echeancier de paiement. */
 export const INSTALLMENT_STATUS_LABELS: Record<InstallmentStatus, string> = {
-  pending: 'A venir',
-  paid: 'Payee',
-  overdue: 'En retard'
+  pending: 'installmentStatuses.pending',
+  paid: 'installmentStatuses.paid',
+  overdue: 'installmentStatuses.overdue'
 }
 
 /** Variante de `BaseBadge` associee au statut d'une echeance d'echeancier de paiement. */
