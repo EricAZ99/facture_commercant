@@ -22,7 +22,16 @@ const PORT = process.env.PORT || 4000
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
 
 const app = express()
-app.use(cors({ origin: CORS_ORIGIN }))
+app.use(cors({
+  origin: (origin, callback) => {
+    // Autorise les requetes sans origin (Postman, curl) et les origines configurees
+    if (!origin || origin === CORS_ORIGIN || /\.vercel\.app$/.test(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  }
+}))
 app.use(express.json())
 
 // --- Stockage des logos uploades ------------------------------------------
@@ -5736,7 +5745,12 @@ app.patch('/api/v1/admin/support/tickets/:id/status', requireAdminAuth, (req, re
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-app.listen(PORT, () => {
-  console.log(`Mock backend Facture IA sur http://localhost:${PORT}`)
-  console.log("Compte de demo (avec donnees d'exemple): demo@facture-ia.com / password123")
-})
+// En local : démarre le serveur. Sur Vercel : exporte l'app pour le handler serverless.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Mock backend Facture IA sur http://localhost:${PORT}`)
+    console.log("Compte de demo (avec donnees d'exemple): demo@facture-ia.com / password123")
+  })
+}
+
+module.exports = app
