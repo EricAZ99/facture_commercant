@@ -767,5 +767,71 @@
   "productTypes": {
     "product": "Producto",
     "service": "Servicio"
+  },
+  "permissions": {
+    "client:create": "Crear clientes",
+    "client:read": "Ver clientes",
+    "client:update": "Editar clientes",
+    "client:delete": "Eliminar clientes",
+    "product:create": "Crear productos",
+    "product:read": "Ver productos",
+    "product:update": "Editar productos",
+    "product:delete": "Eliminar productos",
+    "invoice:create": "Crear facturas/presupuestos",
+    "invoice:read": "Ver facturas/presupuestos",
+    "invoice:update": "Editar facturas/presupuestos",
+    "invoice:delete": "Eliminar facturas/presupuestos",
+    "payment:create": "Registrar pagos",
+    "payment:read": "Ver pagos",
+    "dashboard:read": "Ver panel de control",
+    "report:read": "Ver informes",
+    "user:manage": "Gestionar el equipo",
+    "subscription:read": "Ver suscripcion",
+    "subscription:manage": "Gestionar suscripcion",
+    "settings:manage": "Gestionar la configuracion del negocio"
+  },
+  "permissionGroups": {
+    "clients": "Clientes",
+    "products": "Productos",
+    "invoicesQuotes": "Facturas y presupuestos",
+    "payments": "Pagos",
+    "dashboardReports": "Panel de control e informes",
+    "team": "Equipo",
+    "subscription": "Suscripcion",
+    "settings": "Configuracion"
+  },
+  "businessTypes": {
+    "restaurant": "Restaurante",
+    "boutique": "Tienda",
+    "salon_coiffure": "Peluqueria",
+    "hotel": "Hotel",
+    "pharmacie": "Farmacia",
+    "pme": "PYME",
+    "autre": "Otro"
+  },
+  "currencies": {
+    "XOF": "XOF - Franco CFA (UEMOA)",
+    "XAF": "XAF - Franco CFA (CEMAC)",
+    "EUR": "EUR - Euro",
+    "USD": "USD - Dolar estadounidense",
+    "GBP": "GBP - Libra esterlina",
+    "MAD": "MAD - Dirham marroqui",
+    "GNF": "GNF - Franco guineano",
+    "NGN": "NGN - Naira nigeriano"
+  },
+  "weekdays": {
+    "monday": "Lunes",
+    "tuesday": "Martes",
+    "wednesday": "Miercoles",
+    "thursday": "Jueves",
+    "friday": "Viernes",
+    "saturday": "Sabado",
+    "sunday": "Domingo"
+  },
+  "webhookEvents": {
+    "invoiceCreated": "Factura creada",
+    "invoicePaid": "Factura pagada",
+    "paymentReceived": "Pago recibido",
+    "clientCreated": "Cliente creado"
   }
 }

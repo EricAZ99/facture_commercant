@@ -124,7 +124,7 @@ async function copyKey(): Promise<void> {
             class="focus-ring size-4 rounded border-gray-300"
             @change="toggleEvent(option.value)"
           />
-          {{ option.label }}
+          {{ $t(option.label) }}
         </label>
       </div>
       <div class="flex justify-end">

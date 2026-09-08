@@ -300,7 +300,7 @@ function onSubmit(): void {
               :key="option.value"
               :value="option.value"
             >
-              {{ option.label }}
+              {{ $t(option.label) }}
             </option>
           </select>
         </div>
@@ -394,7 +394,7 @@ function onSubmit(): void {
         :key="day.value"
         class="grid grid-cols-1 items-center gap-2 sm:grid-cols-4"
       >
-        <span class="text-sm text-gray-700">{{ day.label }}</span>
+        <span class="text-sm text-gray-700">{{ $t(day.label) }}</span>
         <template v-if="!form.openingHours[day.value].closed">
           <input
             v-model="form.openingHours[day.value].open"
@@ -459,7 +459,7 @@ function onSubmit(): void {
             class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
           >
             <option v-for="option in CURRENCY_OPTIONS" :key="option.value" :value="option.value">
-              {{ option.label }}
+              {{ $t(option.label) }}
             </option>
           </select>
         </div>

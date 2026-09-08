@@ -767,5 +767,71 @@
   "productTypes": {
     "product": "Product",
     "service": "Service"
+  },
+  "permissions": {
+    "client:create": "Create clients",
+    "client:read": "View clients",
+    "client:update": "Edit clients",
+    "client:delete": "Delete clients",
+    "product:create": "Create products",
+    "product:read": "View products",
+    "product:update": "Edit products",
+    "product:delete": "Delete products",
+    "invoice:create": "Create invoices/quotes",
+    "invoice:read": "View invoices/quotes",
+    "invoice:update": "Edit invoices/quotes",
+    "invoice:delete": "Delete invoices/quotes",
+    "payment:create": "Record payments",
+    "payment:read": "View payments",
+    "dashboard:read": "View dashboard",
+    "report:read": "View reports",
+    "user:manage": "Manage the team",
+    "subscription:read": "View subscription",
+    "subscription:manage": "Manage subscription",
+    "settings:manage": "Manage business settings"
+  },
+  "permissionGroups": {
+    "clients": "Clients",
+    "products": "Products",
+    "invoicesQuotes": "Invoices & quotes",
+    "payments": "Payments",
+    "dashboardReports": "Dashboard & reports",
+    "team": "Team",
+    "subscription": "Subscription",
+    "settings": "Settings"
+  },
+  "businessTypes": {
+    "restaurant": "Restaurant",
+    "boutique": "Shop",
+    "salon_coiffure": "Hair salon",
+    "hotel": "Hotel",
+    "pharmacie": "Pharmacy",
+    "pme": "SME",
+    "autre": "Other"
+  },
+  "currencies": {
+    "XOF": "XOF - CFA Franc (UEMOA)",
+    "XAF": "XAF - CFA Franc (CEMAC)",
+    "EUR": "EUR - Euro",
+    "USD": "USD - US Dollar",
+    "GBP": "GBP - Pound Sterling",
+    "MAD": "MAD - Moroccan Dirham",
+    "GNF": "GNF - Guinean Franc",
+    "NGN": "NGN - Nigerian Naira"
+  },
+  "weekdays": {
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday"
+  },
+  "webhookEvents": {
+    "invoiceCreated": "Invoice created",
+    "invoicePaid": "Invoice paid",
+    "paymentReceived": "Payment received",
+    "clientCreated": "Client created"
   }
 }

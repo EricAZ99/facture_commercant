@@ -55,7 +55,7 @@ function onSubmit(): void {
     <div class="flex max-h-96 flex-col gap-4 overflow-y-auto pr-1">
       <div v-for="group in PERMISSION_GROUPS" :key="group.label">
         <p class="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {{ group.label }}
+          {{ $t(group.label) }}
         </p>
         <div class="flex flex-col gap-1.5">
           <label
@@ -69,7 +69,7 @@ function onSubmit(): void {
               class="focus-ring size-4 rounded border-gray-300"
               @change="toggle(permission)"
             />
-            {{ PERMISSION_LABELS[permission] }}
+            {{ $t(PERMISSION_LABELS[permission]) }}
           </label>
         </div>
       </div>

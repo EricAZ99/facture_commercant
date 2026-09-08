@@ -767,5 +767,71 @@
   "productTypes": {
     "product": "Prodotto",
     "service": "Servizio"
+  },
+  "permissions": {
+    "client:create": "Creare clienti",
+    "client:read": "Visualizzare i clienti",
+    "client:update": "Modificare i clienti",
+    "client:delete": "Eliminare i clienti",
+    "product:create": "Creare prodotti",
+    "product:read": "Visualizzare i prodotti",
+    "product:update": "Modificare i prodotti",
+    "product:delete": "Eliminare i prodotti",
+    "invoice:create": "Creare fatture/preventivi",
+    "invoice:read": "Visualizzare fatture/preventivi",
+    "invoice:update": "Modificare fatture/preventivi",
+    "invoice:delete": "Eliminare fatture/preventivi",
+    "payment:create": "Registrare pagamenti",
+    "payment:read": "Visualizzare i pagamenti",
+    "dashboard:read": "Visualizzare la dashboard",
+    "report:read": "Visualizzare i report",
+    "user:manage": "Gestire il team",
+    "subscription:read": "Visualizzare l'abbonamento",
+    "subscription:manage": "Gestire l'abbonamento",
+    "settings:manage": "Gestire le impostazioni dell'attivita"
+  },
+  "permissionGroups": {
+    "clients": "Clienti",
+    "products": "Prodotti",
+    "invoicesQuotes": "Fatture e preventivi",
+    "payments": "Pagamenti",
+    "dashboardReports": "Dashboard e report",
+    "team": "Team",
+    "subscription": "Abbonamento",
+    "settings": "Impostazioni"
+  },
+  "businessTypes": {
+    "restaurant": "Ristorante",
+    "boutique": "Negozio",
+    "salon_coiffure": "Salone di parrucchiere",
+    "hotel": "Hotel",
+    "pharmacie": "Farmacia",
+    "pme": "PMI",
+    "autre": "Altro"
+  },
+  "currencies": {
+    "XOF": "XOF - Franco CFA (UEMOA)",
+    "XAF": "XAF - Franco CFA (CEMAC)",
+    "EUR": "EUR - Euro",
+    "USD": "USD - Dollaro statunitense",
+    "GBP": "GBP - Sterlina britannica",
+    "MAD": "MAD - Dirham marocchino",
+    "GNF": "GNF - Franco guineano",
+    "NGN": "NGN - Naira nigeriana"
+  },
+  "weekdays": {
+    "monday": "Lunedi",
+    "tuesday": "Martedi",
+    "wednesday": "Mercoledi",
+    "thursday": "Giovedi",
+    "friday": "Venerdi",
+    "saturday": "Sabato",
+    "sunday": "Domenica"
+  },
+  "webhookEvents": {
+    "invoiceCreated": "Fattura creata",
+    "invoicePaid": "Fattura pagata",
+    "paymentReceived": "Pagamento ricevuto",
+    "clientCreated": "Cliente creato"
   }
 }

@@ -71,7 +71,7 @@ async function onSubmit(): Promise<void> {
           class="focus-ring rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
         >
           <option v-for="type in BUSINESS_TYPE_OPTIONS" :key="type.value" :value="type.value">
-            {{ type.label }}
+            {{ $t(type.label) }}
           </option>
         </select>
       </div>
