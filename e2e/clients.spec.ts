@@ -11,10 +11,10 @@ test('creation client : un commercant peut creer un client et le retrouver dans 
   await page.goto('/clients')
 
   await page.getByRole('button', { name: 'Nouveau client' }).click()
-  await page.getByLabel('Prenom').fill('Jean')
+  await page.getByLabel('Prénom').fill('Jean')
   await page.getByLabel(/^Nom\s*\*?$/).fill(lastName)
-  await page.getByLabel('Telephone').fill('+225 01 02 03 04 05')
-  await page.getByRole('button', { name: 'Creer le client' }).click()
+  await page.getByLabel('Téléphone').fill('+225 01 02 03 04 05')
+  await page.getByRole('button', { name: 'Créer le client' }).click()
 
   // La confirmation de succes ferme le formulaire et le client apparait
   // dans la liste (recherche par nom pour retrouver la bonne ligne).

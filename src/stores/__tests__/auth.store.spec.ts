@@ -61,6 +61,7 @@ function fakeAuthResponse(overrides: Partial<AuthResponse> = {}): AuthResponse {
         numberPadding: 4
       },
       isSuspended: false,
+      featureFlags: { quotes: true, creditNotes: true, reports: true, kits: true, apiAccess: true },
       referralCode: 'REF12345',
       referralRedemptions: 0,
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -146,6 +147,34 @@ describe('useAuthStore (authentification)', () => {
     expect(store.hasPermission('invoice:read')).toBe(true)
     expect(store.hasPermission('invoice:delete')).toBe(false)
     expect(store.hasAnyPermission(['invoice:delete', 'client:read'])).toBe(true)
+  })
+
+  it('hasFeature() reflete les fonctionnalites activees pour le commerce connecte', async () => {
+    vi.mocked(authService.login).mockResolvedValue(
+      fakeAuthResponse({
+        business: {
+          ...fakeAuthResponse().business,
+          featureFlags: {
+            quotes: false,
+            creditNotes: true,
+            reports: true,
+            kits: true,
+            apiAccess: true
+          }
+        }
+      })
+    )
+
+    const store = useAuthStore()
+    await store.login({ email: 'erik@example.com', password: 'password123' })
+
+    expect(store.hasFeature('quotes')).toBe(false)
+    expect(store.hasFeature('reports')).toBe(true)
+  })
+
+  it('hasFeature() considere une fonctionnalite active par defaut sans commerce/donnee incomplete', () => {
+    const store = useAuthStore()
+    expect(store.hasFeature('quotes')).toBe(true)
   })
 
   it('setBusiness() met a jour le commerce actif sans toucher a la session utilisateur', async () => {

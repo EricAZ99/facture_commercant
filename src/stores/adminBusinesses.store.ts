@@ -13,7 +13,8 @@ import type {
   ImpersonationTicket,
   PaginationMeta,
   PlatformStats,
-  UpdateBusinessStatusPayload
+  UpdateBusinessStatusPayload,
+  UpdateFeatureFlagsPayload
 } from '@/types'
 
 const EMPTY_META: PaginationMeta = { page: 1, perPage: 10, total: 0, totalPages: 1 }
@@ -80,6 +81,13 @@ export const useAdminBusinessesStore = defineStore('adminBusinesses', () => {
     return adminBusinessService.impersonate(id)
   }
 
+  function updateFeatureFlags(
+    id: ID,
+    payload: UpdateFeatureFlagsPayload
+  ): Promise<AdminBusinessDetail> {
+    return adminBusinessService.updateFeatureFlags(id, payload)
+  }
+
   return {
     items,
     meta,
@@ -94,6 +102,7 @@ export const useAdminBusinessesStore = defineStore('adminBusinesses', () => {
     updateBusinessStatus,
     changeBusinessPlan,
     removeBusiness,
-    impersonateBusiness
+    impersonateBusiness,
+    updateFeatureFlags
   }
 })

@@ -3,7 +3,7 @@ import { Receipt, X } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import { NAV_ITEMS } from '@/constants'
-import { usePermissions } from '@/composables'
+import { useFeatureFlags, usePermissions } from '@/composables'
 import { useUiStore } from '@/stores'
 
 // Composant a deux racines (fond + tiroir) : Vue n'applique alors plus
@@ -13,10 +13,15 @@ import { useUiStore } from '@/stores'
 defineOptions({ inheritAttrs: false })
 
 const { can } = usePermissions()
+const { isEnabled } = useFeatureFlags()
 const uiStore = useUiStore()
 
 const visibleItems = computed(() =>
-  NAV_ITEMS.filter((item) => !item.permission || can(item.permission))
+  NAV_ITEMS.filter(
+    (item) =>
+      (!item.permission || can(item.permission)) &&
+      (!item.featureFlag || isEnabled(item.featureFlag))
+  )
 )
 </script>
 

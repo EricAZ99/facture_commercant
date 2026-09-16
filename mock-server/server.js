@@ -384,6 +384,23 @@ function defaultCreditNoteSettings() {
   }
 }
 
+/** Cles de fonctionnalites activables/desactivables individuellement par commerce depuis l'espace admin. */
+const FEATURE_FLAG_KEYS = ['quotes', 'creditNotes', 'reports', 'kits', 'apiAccess']
+
+/** Libelles lisibles des fonctionnalites, pour les messages du journal d'audit admin. */
+const FEATURE_FLAG_LABELS = {
+  quotes: 'Devis',
+  creditNotes: 'Avoirs',
+  reports: 'Rapports',
+  kits: 'Kits',
+  apiAccess: 'Acces API & webhooks'
+}
+
+/** Toutes les fonctionnalites sont activees par defaut pour un commerce nouvellement cree. */
+function defaultFeatureFlags() {
+  return Object.fromEntries(FEATURE_FLAG_KEYS.map((key) => [key, true]))
+}
+
 function daysAgo(n) {
   const d = new Date()
   d.setDate(d.getDate() - n)
@@ -443,6 +460,7 @@ function seedAccount({ email, password, businessName, seedSampleData }) {
     quoteSettings: defaultQuoteSettings(),
     creditNoteSettings: defaultCreditNoteSettings(),
     isSuspended: false,
+    featureFlags: defaultFeatureFlags(),
     // Objectif de demo pour illustrer le widget "Objectif du mois" des la
     // premiere connexion.
     monthlyRevenueTarget: 500000,
@@ -919,6 +937,7 @@ app.post('/api/v1/auth/register', (req, res) => {
     quoteSettings: defaultQuoteSettings(),
     creditNoteSettings: defaultCreditNoteSettings(),
     isSuspended: false,
+    featureFlags: defaultFeatureFlags(),
     monthlyRevenueTarget: null,
     referralCode: generateReferralCode(),
     referralRedemptions: 0,
@@ -4977,7 +4996,8 @@ function serializeAdminBusinessDetail(business) {
     usersCount: users.filter((u) => u.businessId === business.id).length,
     clientsCount: clients.filter((c) => c.businessId === business.id).length,
     invoicesCount: invoices.filter((i) => i.businessId === business.id).length,
-    subscription: subscriptionRecord ? serializeSubscription(subscriptionRecord) : undefined
+    subscription: subscriptionRecord ? serializeSubscription(subscriptionRecord) : undefined,
+    featureFlags: business.featureFlags || defaultFeatureFlags()
   }
 }
 
@@ -5132,6 +5152,46 @@ app.patch('/api/v1/admin/businesses/:id/suspend', requireAdminAuth, (req, res) =
     business.isSuspended
       ? `Commerce suspendu par ${req.currentAdmin.firstName} ${req.currentAdmin.lastName}`
       : `Commerce reactive par ${req.currentAdmin.firstName} ${req.currentAdmin.lastName}`
+  )
+
+  ok(res, serializeAdminBusinessDetail(business))
+})
+
+/**
+ * Active/desactive une ou plusieurs fonctionnalites pour ce commerce (fusion
+ * partielle, jamais un remplacement complet). Purement informatif cote
+ * mock-server : voir le commentaire de `FeatureFlagKey` cote frontend.
+ */
+app.patch('/api/v1/admin/businesses/:id/feature-flags', requireAdminAuth, (req, res) => {
+  const business = findBusinessOr404(req, res)
+  if (!business) return
+
+  const payload = req.body || {}
+  const changes = Object.entries(payload).filter(([key]) => FEATURE_FLAG_KEYS.includes(key))
+  if (changes.length === 0) {
+    res.status(422).json({
+      success: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Donnees invalides.',
+      errors: { featureFlags: ['Aucune fonctionnalite valide fournie.'] }
+    })
+    return
+  }
+
+  business.featureFlags = business.featureFlags || defaultFeatureFlags()
+  const changeSummary = []
+  for (const [key, value] of changes) {
+    const enabled = Boolean(value)
+    business.featureFlags[key] = enabled
+    changeSummary.push(`${FEATURE_FLAG_LABELS[key] || key} : ${enabled ? 'activee' : 'desactivee'}`)
+  }
+  business.updatedAt = now()
+
+  logAdminAction(
+    req.currentAdmin,
+    business,
+    'feature_flags_updated',
+    `Fonctionnalites modifiees par ${req.currentAdmin.firstName} ${req.currentAdmin.lastName} (${changeSummary.join(', ')})`
   )
 
   ok(res, serializeAdminBusinessDetail(business))

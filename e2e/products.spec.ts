@@ -12,9 +12,9 @@ test('creation produit : un commercant peut creer un produit et le retrouver dan
 
   await page.getByRole('button', { name: 'Nouveau produit' }).click()
   await page.getByLabel(/^Nom\s*\*?$/).fill(name)
-  await page.getByLabel('Categorie').selectOption({ index: 1 })
+  await page.getByLabel('Catégorie').selectOption({ index: 1 })
   await page.getByLabel('Prix').fill('5000')
-  await page.getByRole('button', { name: 'Creer le produit' }).click()
+  await page.getByRole('button', { name: 'Créer le produit' }).click()
 
   await expect(page.getByText('Produit cree avec succes.')).toBeVisible()
   await page.getByPlaceholder('Rechercher un produit...').fill(name)

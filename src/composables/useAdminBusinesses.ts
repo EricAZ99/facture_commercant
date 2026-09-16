@@ -9,7 +9,8 @@ import type {
   ApiError,
   ID,
   PaginationMeta,
-  SubscriptionStatus
+  SubscriptionStatus,
+  UpdateFeatureFlagsPayload
 } from '@/types'
 
 import { usePagination } from './usePagination'
@@ -295,6 +296,22 @@ export function useAdminBusinessDetail(id: ID) {
     }
   }
 
+  /** Active/desactive une ou plusieurs fonctionnalites pour ce commerce (voir `FEATURE_FLAG_DEFINITIONS`). */
+  async function updateFeatureFlags(payload: UpdateFeatureFlagsPayload): Promise<boolean> {
+    isMutating.value = true
+    try {
+      business.value = await store.updateFeatureFlags(id, payload)
+      toast.success('Fonctionnalites mises a jour.')
+      void loadAuditLog()
+      return true
+    } catch (err) {
+      toast.error((err as ApiError).message)
+      return false
+    } finally {
+      isMutating.value = false
+    }
+  }
+
   /** Suppression definitive : reservee a un usage avec confirmation explicite (voir `DeleteBusinessDialog.vue`). */
   async function removeBusiness(confirmName: string): Promise<ApiError | null> {
     isDeleting.value = true
@@ -338,6 +355,7 @@ export function useAdminBusinessDetail(id: ID) {
     toggleSuspension,
     changePlan,
     applyDiscount,
+    updateFeatureFlags,
     removeBusiness,
     openPreview
   }

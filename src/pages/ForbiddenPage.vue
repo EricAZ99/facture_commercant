@@ -13,7 +13,7 @@ import { ROUTE_NAMES } from '@/constants'
     <div>
       <h1 class="text-lg font-semibold text-gray-900">Acces refuse</h1>
       <p class="mt-1 text-sm text-gray-500">
-        Vous n'avez pas les permissions necessaires pour acceder a cette page.
+        Vous n'avez pas acces a cette page, ou elle n'est pas disponible pour votre commerce.
       </p>
     </div>
     <RouterLink :to="{ name: ROUTE_NAMES.dashboard }">

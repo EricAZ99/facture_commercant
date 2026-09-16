@@ -139,6 +139,7 @@ export const API_ENDPOINTS = {
     changeBusinessPlan: (id: string) => `/admin/businesses/${id}/plan`,
     impersonateBusiness: (id: string) => `/admin/businesses/${id}/impersonate`,
     applyDiscount: (id: string) => `/admin/businesses/${id}/discount`,
+    featureFlags: (id: string) => `/admin/businesses/${id}/feature-flags`,
     auditLog: (businessId: string) => `/admin/businesses/${businessId}/audit-log`,
     globalAuditLog: '/admin/audit-log',
     plans: '/admin/plans',

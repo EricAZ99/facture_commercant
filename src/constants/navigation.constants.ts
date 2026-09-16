@@ -15,7 +15,7 @@ import {
   type LucideIcon
 } from 'lucide-vue-next'
 
-import type { Permission } from '@/types'
+import type { FeatureFlagKey, Permission } from '@/types'
 
 import { ROUTE_NAMES } from './route.constants'
 
@@ -26,6 +26,8 @@ export interface NavItem {
   icon: LucideIcon
   /** Permission requise pour afficher l'entree; absente = toujours visible. */
   permission?: Permission
+  /** Fonctionnalite devant etre activee pour ce commerce (voir `useFeatureFlags`); absente = toujours visible. */
+  featureFlag?: FeatureFlagKey
 }
 
 /** Elements de navigation principaux affiches dans la barre laterale. */
@@ -47,13 +49,15 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.kits',
     routeName: ROUTE_NAMES.kits,
     icon: Layers,
-    permission: 'product:read'
+    permission: 'product:read',
+    featureFlag: 'kits'
   },
   {
     labelKey: 'nav.quotes',
     routeName: ROUTE_NAMES.quotes,
     icon: ClipboardList,
-    permission: 'invoice:read'
+    permission: 'invoice:read',
+    featureFlag: 'quotes'
   },
   {
     labelKey: 'nav.invoices',
@@ -65,7 +69,8 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.creditNotes',
     routeName: ROUTE_NAMES.creditNotes,
     icon: FileMinus,
-    permission: 'invoice:read'
+    permission: 'invoice:read',
+    featureFlag: 'creditNotes'
   },
   {
     labelKey: 'nav.payments',
@@ -77,7 +82,8 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.reports',
     routeName: ROUTE_NAMES.reports,
     icon: BarChart3,
-    permission: 'report:read'
+    permission: 'report:read',
+    featureFlag: 'reports'
   },
   {
     labelKey: 'nav.team',

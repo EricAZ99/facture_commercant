@@ -61,11 +61,11 @@ async function dismissOnboardingIfPresent(page: Page): Promise<void> {
 export async function registerViaUi(page: Page, business: NewBusiness): Promise<void> {
   await page.goto('/register')
   await page.getByLabel('Nom du commerce').fill(business.businessName)
-  await page.getByLabel('Prenom').fill(business.firstName)
+  await page.getByLabel('Prénom').fill(business.firstName)
   await page.getByLabel(/^Nom\s*\*?$/).fill(business.lastName)
   await page.getByLabel('Email').fill(business.email)
   await page.getByLabel('Mot de passe').fill(business.password)
-  await page.getByRole('button', { name: 'Creer mon compte' }).click()
+  await page.getByRole('button', { name: 'Créer mon compte' }).click()
   // Le tableau de bord vit a la racine ("/") : on verifie le contenu affiche
   // plutot qu'un segment d'URL "/dashboard" qui n'existe pas dans le routeur.
   await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible()
@@ -85,6 +85,6 @@ export async function loginViaUi(page: Page, email: string, password: string): P
 /** Deconnecte l'utilisateur courant via le menu du topbar et attend l'atterrissage sur la page de connexion. */
 export async function logoutViaUi(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Menu utilisateur' }).click()
-  await page.getByRole('button', { name: 'Se deconnecter' }).click()
+  await page.getByRole('button', { name: 'Se déconnecter' }).click()
   await expect(page).toHaveURL(/\/login/)
 }

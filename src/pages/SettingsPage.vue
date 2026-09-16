@@ -15,13 +15,14 @@ import LogoUploader from '@/components/business/LogoUploader.vue'
 import MyAccountCard from '@/components/business/MyAccountCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { ROUTE_NAMES } from '@/constants'
-import { useBusiness, useMyAccount, usePermissions } from '@/composables'
+import { useBusiness, useFeatureFlags, useMyAccount, usePermissions } from '@/composables'
 import { useAuthStore } from '@/stores'
 import type { ApiError, UpdateBusinessPayload } from '@/types'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const { can } = usePermissions()
+const { isEnabled } = useFeatureFlags()
 const {
   business,
   isSaving,
@@ -174,7 +175,10 @@ async function onConfirmDelete(confirmName: string): Promise<void> {
         </p>
       </BaseCard>
 
-      <BaseCard v-if="can('settings:manage')" :title="$t('settings.developer')">
+      <BaseCard
+        v-if="can('settings:manage') && isEnabled('apiAccess')"
+        :title="$t('settings.developer')"
+      >
         <DeveloperSettingsCard
           :business="business"
           :regenerating-key="isRegeneratingApiKey"

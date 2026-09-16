@@ -1,5 +1,5 @@
 import type { ID, ISODateString, ListQueryParams } from './common.types'
-import type { BusinessType } from './business.types'
+import type { BusinessType, FeatureFlagKey } from './business.types'
 import type { Subscription, SubscriptionPlan, SubscriptionStatus } from './subscription.types'
 
 /**
@@ -84,6 +84,7 @@ export interface AdminBusinessDetail extends AdminBusinessSummary {
   clientsCount: number
   invoicesCount: number
   subscription: Subscription
+  featureFlags: Record<FeatureFlagKey, boolean>
 }
 
 /** Parametres de filtrage/pagination de la liste admin des commerces. */
@@ -165,6 +166,9 @@ export interface LtvStats {
 export interface ApplyDiscountPayload {
   discountPercent: number
 }
+
+/** Payload d'activation/desactivation des fonctionnalites d'un commerce (fusionne, pas remplace). */
+export type UpdateFeatureFlagsPayload = Partial<Record<FeatureFlagKey, boolean>>
 
 /** Parametres globaux de la plateforme. */
 export interface PlatformSettings {

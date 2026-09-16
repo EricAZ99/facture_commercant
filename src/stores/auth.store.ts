@@ -6,6 +6,7 @@ import { authService, setBusinessIdProvider, setUnauthorizedHandler } from '@/se
 import type {
   AuthResponse,
   Business,
+  FeatureFlagKey,
   ForgotPasswordPayload,
   LoginCredentials,
   Permission,
@@ -45,6 +46,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   function hasAnyPermission(required: Permission[]): boolean {
     return required.some((permission) => permissions.value.includes(permission))
+  }
+
+  /**
+   * Une fonctionnalite non explicitement desactivee par l'admin est
+   * consideree active (absence de `featureFlags`/de la cle = active), pour
+   * ne jamais masquer une page a cause d'une donnee de commerce incomplete.
+   */
+  function hasFeature(flag: FeatureFlagKey): boolean {
+    return business.value?.featureFlags?.[flag] !== false
   }
 
   function setSession(payload: AuthResponse): void {
@@ -172,6 +182,7 @@ export const useAuthStore = defineStore('auth', () => {
     role,
     hasPermission,
     hasAnyPermission,
+    hasFeature,
     login,
     register,
     loginWithImpersonationTicket,

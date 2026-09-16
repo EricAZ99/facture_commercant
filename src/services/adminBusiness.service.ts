@@ -12,7 +12,8 @@ import type {
   ListQueryParams,
   PaginatedResponse,
   PlatformStats,
-  UpdateBusinessStatusPayload
+  UpdateBusinessStatusPayload,
+  UpdateFeatureFlagsPayload
 } from '@/types'
 
 import { adminApiClient } from './adminApi'
@@ -83,6 +84,18 @@ export const adminBusinessService = {
   async applyDiscount(id: ID, payload: ApplyDiscountPayload): Promise<AdminBusinessDetail> {
     const { data } = await adminApiClient.post<ApiResponse<AdminBusinessDetail>>(
       API_ENDPOINTS.admin.applyDiscount(id),
+      payload
+    )
+    return data.data
+  },
+
+  /** Active/desactive une ou plusieurs fonctionnalites pour ce commerce (fusion partielle). */
+  async updateFeatureFlags(
+    id: ID,
+    payload: UpdateFeatureFlagsPayload
+  ): Promise<AdminBusinessDetail> {
+    const { data } = await adminApiClient.patch<ApiResponse<AdminBusinessDetail>>(
+      API_ENDPOINTS.admin.featureFlags(id),
       payload
     )
     return data.data

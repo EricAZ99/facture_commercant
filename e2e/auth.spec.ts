@@ -10,11 +10,11 @@ test.describe('Authentification', () => {
 
     await page.goto('/register')
     await page.getByLabel('Nom du commerce').fill(business.businessName)
-    await page.getByLabel('Prenom').fill(business.firstName)
+    await page.getByLabel('Prénom').fill(business.firstName)
     await page.getByLabel(/^Nom\s*\*?$/).fill(business.lastName)
     await page.getByLabel('Email').fill(business.email)
     await page.getByLabel('Mot de passe').fill(business.password)
-    await page.getByRole('button', { name: 'Creer mon compte' }).click()
+    await page.getByRole('button', { name: 'Créer mon compte' }).click()
 
     // Un compte nouvellement inscrit demarre sans donnees : l'etat vide du
     // tableau de bord doit s'afficher, pas une erreur.

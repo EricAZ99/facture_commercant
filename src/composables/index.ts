@@ -1,6 +1,7 @@
 export { useApi } from './useApi'
 export { useToast } from './useToast'
 export { usePermissions } from './usePermissions'
+export { useFeatureFlags } from './useFeatureFlags'
 export { usePagination } from './usePagination'
 export { useAuth } from './useAuth'
 export { useDashboard, DASHBOARD_PERIOD_OPTIONS } from './useDashboard'

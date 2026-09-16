@@ -12,12 +12,13 @@ import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import ErrorState from '@/components/states/ErrorState.vue'
 import LoadingState from '@/components/states/LoadingState.vue'
 import {
+  FEATURE_FLAG_DEFINITIONS,
   ROUTE_NAMES,
   SUBSCRIPTION_STATUS_BADGE_VARIANT,
   SUBSCRIPTION_STATUS_LABELS
 } from '@/constants'
 import { useAdminBusinessDetail, useAdminPlans } from '@/composables'
-import type { ApiError, ID } from '@/types'
+import type { ApiError, FeatureFlagKey, ID } from '@/types'
 import { formatCurrency, formatDateTime } from '@/utils/formatters'
 
 interface Props {
@@ -41,9 +42,15 @@ const {
   toggleSuspension,
   changePlan,
   applyDiscount,
+  updateFeatureFlags,
   removeBusiness,
   openPreview
 } = useAdminBusinessDetail(props.id)
+
+function onToggleFeatureFlag(key: FeatureFlagKey): void {
+  if (!business.value) return
+  void updateFeatureFlags({ [key]: !business.value.featureFlags[key] })
+}
 
 const discountInput = ref('')
 async function onApplyDiscount(): Promise<void> {
@@ -233,6 +240,34 @@ async function onConfirmDelete(): Promise<void> {
               </BaseButton>
             </div>
           </div>
+        </BaseCard>
+
+        <BaseCard
+          title="Fonctionnalites"
+          subtitle="Active ou desactive des fonctionnalites pour ce commerce, independamment de son plan."
+          class="lg:col-span-2"
+        >
+          <ul class="flex flex-col divide-y divide-gray-100">
+            <li
+              v-for="flag in FEATURE_FLAG_DEFINITIONS"
+              :key="flag.key"
+              class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+            >
+              <label class="flex flex-1 items-start gap-3 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  class="focus-ring mt-0.5 size-4 rounded border-gray-300"
+                  :checked="business.featureFlags[flag.key]"
+                  :disabled="isMutating"
+                  @change="onToggleFeatureFlag(flag.key)"
+                />
+                <span>
+                  <span class="block font-medium text-gray-900">{{ flag.label }}</span>
+                  <span class="block text-gray-500">{{ flag.description }}</span>
+                </span>
+              </label>
+            </li>
+          </ul>
         </BaseCard>
       </div>
 

@@ -7,6 +7,7 @@ import { NAV_ITEMS, ROUTE_NAMES } from '@/constants'
 import { clientService, invoiceService, productService } from '@/services'
 import type { Client, Invoice, Product } from '@/types'
 
+import { useFeatureFlags } from './useFeatureFlags'
 import { usePermissions } from './usePermissions'
 
 export interface CommandResult {
@@ -29,6 +30,7 @@ const MAX_RESULTS_PER_ENTITY = 5
 export function useCommandPalette() {
   const router = useRouter()
   const { can } = usePermissions()
+  const { isEnabled } = useFeatureFlags()
   const { t } = useI18n()
 
   const isOpen = ref(false)
@@ -55,7 +57,11 @@ export function useCommandPalette() {
   }
 
   const navCommands = computed<CommandResult[]>(() =>
-    NAV_ITEMS.filter((item) => !item.permission || can(item.permission)).map((item) => ({
+    NAV_ITEMS.filter(
+      (item) =>
+        (!item.permission || can(item.permission)) &&
+        (!item.featureFlag || isEnabled(item.featureFlag))
+    ).map((item) => ({
       id: `nav-${item.routeName}`,
       label: t(item.labelKey),
       icon: item.icon,
@@ -72,12 +78,14 @@ export function useCommandPalette() {
         icon: FilePlus,
         action: () => router.push({ name: ROUTE_NAMES.invoiceCreate })
       })
-      actions.push({
-        id: 'action-new-quote',
-        label: t('commandPalette.newQuote'),
-        icon: FilePlus,
-        action: () => router.push({ name: ROUTE_NAMES.quoteCreate })
-      })
+      if (isEnabled('quotes')) {
+        actions.push({
+          id: 'action-new-quote',
+          label: t('commandPalette.newQuote'),
+          icon: FilePlus,
+          action: () => router.push({ name: ROUTE_NAMES.quoteCreate })
+        })
+      }
     }
     return actions
   })

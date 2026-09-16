@@ -3,7 +3,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 import { ROUTE_NAMES } from '@/constants'
 import { useAdminAuthStore, useAuthStore } from '@/stores'
-import type { Permission } from '@/types'
+import type { FeatureFlagKey, Permission } from '@/types'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -13,6 +13,8 @@ declare module 'vue-router' {
     guestOnly?: boolean
     /** Permission requise pour acceder a la route (en plus de `requiresAuth`). */
     permission?: Permission
+    /** Fonctionnalite devant etre activee pour ce commerce (en plus de `requiresAuth`/`permission`). */
+    featureFlag?: FeatureFlagKey
     /**
      * Route de l'espace admin plateforme, accessible uniquement a un admin
      * authentifie. Realm entierement separe de `requiresAuth`/`permission`
@@ -65,14 +67,14 @@ const routes: RouteRecordRaw[] = [
         path: 'kits',
         name: ROUTE_NAMES.kits,
         component: () => import('@/pages/KitsPage.vue'),
-        meta: { permission: 'product:read' }
+        meta: { permission: 'product:read', featureFlag: 'kits' }
       },
       {
         path: 'kits/:id',
         name: ROUTE_NAMES.kitDetail,
         component: () => import('@/pages/KitDetailPage.vue'),
         props: true,
-        meta: { permission: 'product:read' }
+        meta: { permission: 'product:read', featureFlag: 'kits' }
       },
       {
         path: 'invoices',
@@ -100,27 +102,27 @@ const routes: RouteRecordRaw[] = [
         path: 'quotes',
         name: ROUTE_NAMES.quotes,
         component: () => import('@/pages/QuotesPage.vue'),
-        meta: { permission: 'invoice:read' }
+        meta: { permission: 'invoice:read', featureFlag: 'quotes' }
       },
       {
         // Meme remarque que pour `invoices/create` : ordre statique/dynamique.
         path: 'quotes/create',
         name: ROUTE_NAMES.quoteCreate,
         component: () => import('@/pages/QuoteCreatePage.vue'),
-        meta: { permission: 'invoice:create' }
+        meta: { permission: 'invoice:create', featureFlag: 'quotes' }
       },
       {
         path: 'quotes/:id',
         name: ROUTE_NAMES.quoteDetail,
         component: () => import('@/pages/QuoteDetailPage.vue'),
         props: true,
-        meta: { permission: 'invoice:read' }
+        meta: { permission: 'invoice:read', featureFlag: 'quotes' }
       },
       {
         path: 'credit-notes',
         name: ROUTE_NAMES.creditNotes,
         component: () => import('@/pages/CreditNotesPage.vue'),
-        meta: { permission: 'invoice:read' }
+        meta: { permission: 'invoice:read', featureFlag: 'creditNotes' }
       },
       {
         path: 'payments',
@@ -132,7 +134,7 @@ const routes: RouteRecordRaw[] = [
         path: 'reports',
         name: ROUTE_NAMES.reports,
         component: () => import('@/pages/ReportsPage.vue'),
-        meta: { permission: 'report:read' }
+        meta: { permission: 'report:read', featureFlag: 'reports' }
       },
       {
         path: 'users',
@@ -341,6 +343,10 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {
+    return { name: ROUTE_NAMES.forbidden }
+  }
+
+  if (to.meta.featureFlag && !authStore.hasFeature(to.meta.featureFlag)) {
     return { name: ROUTE_NAMES.forbidden }
   }
 

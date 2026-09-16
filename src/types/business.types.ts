@@ -60,6 +60,15 @@ export interface SocialLinks {
   whatsapp?: string
 }
 
+/**
+ * Fonctionnalite activable/desactivable individuellement pour un commerce
+ * donne, depuis l'espace admin (independant du plan d'abonnement). Purement
+ * informatif cote frontend au sens ou aucune route mock-server ne bloque
+ * les mutations correspondantes : seuls la navigation et l'acces aux pages
+ * concernees sont masques cote commercant (voir `useFeatureFlags`).
+ */
+export type FeatureFlagKey = 'quotes' | 'creditNotes' | 'reports' | 'kits' | 'apiAccess'
+
 /** Un commerce (tenant) client du SaaS: unite d'isolation multi-tenant. */
 export interface Business {
   id: ID
@@ -107,6 +116,12 @@ export interface Business {
    * lui-meme, uniquement par l'espace admin.
    */
   isSuspended: boolean
+  /**
+   * Fonctionnalites activees pour ce commerce (voir `FeatureFlagKey`). Comme
+   * `isSuspended`, ce champ n'est jamais modifiable par le commerce
+   * lui-meme, uniquement par l'espace admin.
+   */
+  featureFlags: Record<FeatureFlagKey, boolean>
   /** Objectif de chiffre d'affaires du mois en cours, affiche sur le tableau de bord. `null`/absent = pas d'objectif defini. */
   monthlyRevenueTarget?: number | null
   createdAt: ISODateString
@@ -116,10 +131,14 @@ export interface Business {
 /**
  * Payload de mise a jour des parametres du commerce. Le logo et le tampon se
  * gerent via des endpoints dedies (upload de fichier), l'API key via son
- * propre endpoint de (re)generation — jamais via ce payload JSON.
+ * propre endpoint de (re)generation, `isSuspended`/`featureFlags` via
+ * l'espace admin uniquement — jamais via ce payload JSON self-service.
  */
 export type UpdateBusinessPayload = Partial<
-  Omit<Business, 'id' | 'createdAt' | 'updatedAt' | 'logoUrl' | 'stampUrl' | 'apiKey'>
+  Omit<
+    Business,
+    'id' | 'createdAt' | 'updatedAt' | 'logoUrl' | 'stampUrl' | 'apiKey' | 'featureFlags'
+  >
 >
 
 /** Export complet des donnees du commerce (sauvegarde manuelle self-service). */
