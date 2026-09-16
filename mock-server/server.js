@@ -9,6 +9,14 @@
  * Demarrage: npm install && npm start   (ecoute sur http://localhost:4000)
  * Compte de demo pre-cree (donnees d'exemple) : demo@facture-ia.com / password123
  * Un compte cree via l'inscription demarre volontairement vide (etat "sans donnees").
+ *
+ * Deploiement Vercel (voir `api/index.cjs`) : reexporte tel quel comme
+ * fonction serverless, pour une DEMO cliquable uniquement. Les tableaux
+ * en memoire ci-dessous ne survivent pas de facon fiable a un redemarrage
+ * a froid ni entre plusieurs instances serverless concurrentes : les
+ * donnees d'un visiteur peuvent disparaitre ou etre incoherentes d'une
+ * requete a l'autre. Ne jamais presenter ce deploiement comme une vraie
+ * mise en production (voir README `mock-server/`).
  */
 
 const express = require('express')
@@ -17,6 +25,7 @@ const crypto = require('crypto')
 const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
 
 const PORT = process.env.PORT || 4000
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
@@ -36,7 +45,17 @@ app.use(express.json())
 
 // --- Stockage des logos uploades ------------------------------------------
 
-const UPLOADS_DIR = path.join(__dirname, 'uploads')
+/**
+ * Sur Vercel, le systeme de fichiers du bundle deploye est en lecture
+ * seule : seul `/tmp` (`os.tmpdir()`) accepte des ecritures, et sans
+ * aucune garantie de persistance au-dela de l'instance serverless
+ * courante (un redemarrage a froid ou une autre instance ne le verra
+ * pas). Acceptable pour une demo (l'ensemble des donnees est de toute
+ * facon en memoire, non persistant), pas pour un usage production reel.
+ */
+const UPLOADS_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), 'facture-ia-uploads')
+  : path.join(__dirname, 'uploads')
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true })
 app.use('/uploads', express.static(UPLOADS_DIR))
 
