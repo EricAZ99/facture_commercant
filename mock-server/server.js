@@ -1085,6 +1085,15 @@ app.post('/api/v1/auth/register', async (req, res) => {
   createDefaultSubscription(businessId)
   logPlatformEvent('business_registered', `Nouveau commerce inscrit : ${business.name}`)
 
+  // Persiste AVANT de repondre (plutot que de compter sur le middleware
+  // generique post-requete) : le client va immediatement utiliser les
+  // jetons emis ci-dessous pour d'autres appels authentifies, qui
+  // verifient `isActive` EN DIRECT contre Postgres (voir `requireAuth`).
+  // Sans cette attente explicite, une requete arrivant avant la fin de
+  // l'ecriture trouverait l'utilisateur absent de la base et serait
+  // rejetee a tort (course observee en pratique lors de tests reels).
+  await db.persistAll(businesses, users, platformAdmins)
+
   const tokens = issueTokens(userId)
   ok(res, { user: publicUser(user), business, tokens })
 })
@@ -4449,6 +4458,10 @@ app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), async (
     `Nouvel utilisateur invite : ${user.firstName} ${user.lastName}`,
     user.createdAt
   )
+  // Voir le commentaire equivalent dans `/auth/register` : persiste avant
+  // de repondre pour que ce nouvel utilisateur puisse se connecter des
+  // reception du mot de passe temporaire, sans course avec Postgres.
+  await db.persistAll(businesses, users, platformAdmins)
   ok(res, { ...publicUser(user), temporaryPassword })
 })
 
@@ -5548,6 +5561,7 @@ app.post('/api/v1/admin/admins', requireAdminAuth, requireSuperAdmin, async (req
     updatedAt: now()
   }
   platformAdmins.push(admin)
+  await db.persistAll(businesses, users, platformAdmins)
   ok(res, publicAdminSummary(admin))
 })
 
