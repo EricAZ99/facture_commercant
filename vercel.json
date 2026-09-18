@@ -1,7 +1,9 @@
 {
   "installCommand": "npm install && cd mock-server && npm install",
   "functions": {
-    "api/index.cjs": {}
+    "api/index.cjs": {
+      "maxDuration": 10
+    }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.cjs" },
