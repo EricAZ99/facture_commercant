@@ -1,22 +1,23 @@
 /**
- * Backend factice pour tester le frontend Facture IA en local.
+ * Backend de demo pour Facture IA.
  *
- * Donnees en memoire (perdues au redemarrage), aucune securite reelle
- * (mots de passe en clair, jetons non signes). Ce N'EST PAS le backend
- * de production Node/Express a construire : c'est un outil de dev pour
- * valider le frontend (auth + tableau de bord) sans backend reel.
+ * Phase 1 "vrai backend" : commerces, utilisateurs et administrateurs
+ * plateforme sont persistes dans Postgres (voir `db.js`), avec mots de
+ * passe haches (bcrypt) et jetons JWT signes (au lieu de jetons opaques
+ * stockes dans une Map en memoire). Toutes les AUTRES entites (clients,
+ * produits, factures, devis, avoirs, paiements...) restent en memoire pure,
+ * perdues au redemarrage : c'est la portee volontaire de cette phase, pas
+ * un oubli (voir README `mock-server/`).
  *
  * Demarrage: npm install && npm start   (ecoute sur http://localhost:4000)
  * Compte de demo pre-cree (donnees d'exemple) : demo@facture-ia.com / password123
  * Un compte cree via l'inscription demarre volontairement vide (etat "sans donnees").
  *
- * Deploiement Vercel (voir `api/index.cjs`) : reexporte tel quel comme
- * fonction serverless, pour une DEMO cliquable uniquement. Les tableaux
- * en memoire ci-dessous ne survivent pas de facon fiable a un redemarrage
- * a froid ni entre plusieurs instances serverless concurrentes : les
- * donnees d'un visiteur peuvent disparaitre ou etre incoherentes d'une
- * requete a l'autre. Ne jamais presenter ce deploiement comme une vraie
- * mise en production (voir README `mock-server/`).
+ * Deploiement Vercel (voir `api/index.js`) : reexporte comme fonction
+ * serverless. Sans `DATABASE_URL` configuree, se comporte exactement comme
+ * avant (tout en memoire, y compris commerces/utilisateurs/admins) — utile
+ * en dev local sans base. Avec `DATABASE_URL`, la persistance decrite
+ * ci-dessus s'active automatiquement (voir `db.js`).
  */
 
 const express = require('express')
@@ -26,6 +27,8 @@ const multer = require('multer')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
+require('dotenv').config({ path: path.join(__dirname, '.env.local') })
+const db = require('./db')
 
 const PORT = process.env.PORT || 4000
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173'
@@ -42,6 +45,21 @@ app.use(cors({
   }
 }))
 app.use(express.json())
+
+// Reecrit `businesses`/`users`/`platformAdmins` vers Postgres apres chaque
+// requete (no-op sans `DATABASE_URL`). Volontairement inconditionnel
+// (plutot que cible sur les seules routes qui mutent) : le volume de ces
+// trois tables reste minuscule pour une demo, et ca garantit qu'aucun
+// point de mutation ne peut etre oublie. Ne bloque jamais la reponse au
+// client (echec de persistance journalise, jamais renvoye en erreur).
+app.use((req, res, next) => {
+  res.on('finish', () => {
+    db.persistAll(businesses, users, platformAdmins).catch((err) => {
+      console.error('Echec de la persistance apres requete:', err)
+    })
+  })
+  next()
+})
 
 // --- Stockage des logos uploades ------------------------------------------
 
@@ -91,6 +109,11 @@ const uploadAttachment = multer({
 
 // --- "Base de donnees" en memoire ------------------------------------------
 
+// `businesses`/`users`/`platformAdmins` (plus loin) sont hydrates depuis
+// Postgres au demarrage et reecrits apres chaque requete si `DATABASE_URL`
+// est configuree (voir `db.js` et `ensureReady()`/le middleware de
+// persistance plus bas) : le reste du fichier les lit/ecrit exactement
+// comme des tableaux en memoire ordinaires, sans le savoir.
 const businesses = []
 const users = []
 const clients = []
@@ -107,10 +130,6 @@ const refunds = []
 const installmentPlans = []
 const subscriptions = []
 const activities = []
-/** token -> userId */
-const accessTokens = new Map()
-/** token -> userId */
-const refreshTokens = new Map()
 /** Historique de connexion des utilisateurs commercants (qui, quand). */
 const userLoginHistory = []
 
@@ -124,10 +143,6 @@ const adminLoginHistory = []
 const supportTickets = []
 /** Evenements plateforme notifies aux admins (nouveau commerce, nouveau ticket...). */
 const platformEvents = []
-/** token -> adminId */
-const adminAccessTokens = new Map()
-/** token -> adminId */
-const adminRefreshTokens = new Map()
 /**
  * Tickets d'apercu ("mode apercu" admin) : ticket -> { userId, expiresAt }.
  * A usage unique et courte duree de vie (voir `/admin/businesses/:id/impersonate`
@@ -426,26 +441,26 @@ function daysAgo(n) {
   return d
 }
 
-/** Revoque tous les jetons (acces + rafraichissement) d'un utilisateur, ex. suppression ou desactivation du compte. */
-function revokeUserTokens(userId) {
-  for (const token of [...accessTokens.entries()]) {
-    if (token[1] === userId) accessTokens.delete(token[0])
-  }
-  for (const token of [...refreshTokens.entries()]) {
-    if (token[1] === userId) refreshTokens.delete(token[0])
-  }
-}
+/**
+ * Ancien mecanisme de revocation immediate d'un utilisateur supprime/
+ * desactive : devenu un no-op avec des jetons JWT auto-suffisants (rien a
+ * supprimer d'une Map). La revocation immediate est desormais assuree par
+ * `requireAuth`, qui verifie `isActive` EN DIRECT contre Postgres a chaque
+ * requete plutot que de faire confiance a un jeton deja emis (voir `db.js`,
+ * `isRecordActiveLive`). Conserve (plutot que supprime) pour ne pas devoir
+ * toucher chacun de ses appelants.
+ */
+function revokeUserTokens(_userId) {}
 
 function issueTokens(userId) {
-  const accessToken = crypto.randomUUID()
-  const refreshToken = crypto.randomUUID()
-  accessTokens.set(accessToken, userId)
-  refreshTokens.set(refreshToken, userId)
-  return { accessToken, refreshToken }
+  return {
+    accessToken: db.signAccessToken(userId, 'merchant'),
+    refreshToken: db.signRefreshToken(userId, 'merchant')
+  }
 }
 
 function publicUser(user) {
-  const { password, ...rest } = user
+  const { passwordHash, ...rest } = user
   return rest
 }
 
@@ -456,55 +471,77 @@ function generateReferralCode() {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase()
 }
 
-function seedAccount({ email, password, businessName, seedSampleData }) {
-  const businessId = crypto.randomUUID()
-  const userId = crypto.randomUUID()
+/**
+ * Cree (ou reutilise) le commerce/utilisateur de demonstration donnes.
+ *
+ * `businessId`/`userId` sont stables (constantes, pas `crypto.randomUUID()`)
+ * pour les comptes de demo : une fois persistes dans Postgres, un futur
+ * demarrage a froid les retrouve exactement aux memes identifiants (voir
+ * `hydrate()`), au lieu d'en generer de nouveaux qui ne correspondraient
+ * plus a rien. La creation du commerce/utilisateur est donc idempotente
+ * (ignoree si deja hydrate) pour ne jamais ecraser un mot de passe ou des
+ * reglages modifies en cours de demo. L'abonnement et les donnees
+ * d'exemple (clients, factures...) restent hors perimetre de la
+ * persistance Phase 1 : toujours regeneres en memoire, meme si le
+ * commerce/utilisateur existait deja.
+ */
+async function seedAccount({
+  email,
+  password,
+  businessName,
+  seedSampleData,
+  businessId = crypto.randomUUID(),
+  userId = crypto.randomUUID()
+}) {
+  const businessAlreadyExists = businesses.some((b) => b.id === businessId)
 
-  businesses.push({
-    id: businessId,
-    name: businessName,
-    businessType: 'boutique',
-    email: `contact@${businessName.toLowerCase().replace(/\s+/g, '-')}.test`,
-    phone: '+225 07 00 00 00 00',
-    address: "Abidjan, Cote d'Ivoire",
-    city: 'Abidjan',
-    country: "Cote d'Ivoire",
-    taxId: undefined,
-    logoUrl: undefined,
-    currency: 'XOF',
-    timezone: 'Africa/Abidjan',
-    vatEnabled: true,
-    defaultVatRate: 18,
-    invoiceSettings: defaultInvoiceSettings(),
-    quoteSettings: defaultQuoteSettings(),
-    creditNoteSettings: defaultCreditNoteSettings(),
-    isSuspended: false,
-    featureFlags: defaultFeatureFlags(),
-    // Objectif de demo pour illustrer le widget "Objectif du mois" des la
-    // premiere connexion.
-    monthlyRevenueTarget: 500000,
-    referralCode: generateReferralCode(),
-    referralRedemptions: 0,
-    createdAt: now(),
-    updatedAt: now()
-  })
+  if (!businessAlreadyExists) {
+    businesses.push({
+      id: businessId,
+      name: businessName,
+      businessType: 'boutique',
+      email: `contact@${businessName.toLowerCase().replace(/\s+/g, '-')}.test`,
+      phone: '+225 07 00 00 00 00',
+      address: "Abidjan, Cote d'Ivoire",
+      city: 'Abidjan',
+      country: "Cote d'Ivoire",
+      taxId: undefined,
+      logoUrl: undefined,
+      currency: 'XOF',
+      timezone: 'Africa/Abidjan',
+      vatEnabled: true,
+      defaultVatRate: 18,
+      invoiceSettings: defaultInvoiceSettings(),
+      quoteSettings: defaultQuoteSettings(),
+      creditNoteSettings: defaultCreditNoteSettings(),
+      isSuspended: false,
+      featureFlags: defaultFeatureFlags(),
+      // Objectif de demo pour illustrer le widget "Objectif du mois" des la
+      // premiere connexion.
+      monthlyRevenueTarget: 500000,
+      referralCode: generateReferralCode(),
+      referralRedemptions: 0,
+      createdAt: now(),
+      updatedAt: now()
+    })
 
-  users.push({
-    id: userId,
-    businessId,
-    firstName: 'AZANKPO',
-    lastName: 'Erik',
-    email,
-    password,
-    phone: undefined,
-    role: 'owner',
-    permissions: OWNER_PERMISSIONS,
-    avatarUrl: undefined,
-    isActive: true,
-    lastLoginAt: undefined,
-    createdAt: now(),
-    updatedAt: now()
-  })
+    users.push({
+      id: userId,
+      businessId,
+      firstName: 'AZANKPO',
+      lastName: 'Erik',
+      email,
+      passwordHash: await db.hashPassword(password),
+      phone: undefined,
+      role: 'owner',
+      permissions: OWNER_PERMISSIONS,
+      avatarUrl: undefined,
+      isActive: true,
+      lastLoginAt: undefined,
+      createdAt: now(),
+      updatedAt: now()
+    })
+  }
 
   // Abonnement du compte de demo : plan Free deja "actif" (pas en essai, pour
   // coller a l'anciennete simulee du commerce), sur la periode calendaire en
@@ -768,35 +805,65 @@ function seedSampleData_(businessId) {
   }
 }
 
-seedAccount({
-  email: 'demo@facture-ia.com',
-  password: 'password123',
-  businessName: 'Ma Boutique Demo',
-  seedSampleData: true
-})
+// Identifiants stables des comptes de demo (voir la doc de `seedAccount`
+// ci-dessus) : jamais regeneres, pour rester valides d'un demarrage a
+// froid a l'autre une fois persistes dans Postgres.
+const DEMO_BUSINESS_ID = '00000000-0000-4000-8000-000000000001'
+const DEMO_USER_ID = '00000000-0000-4000-8000-000000000002'
+const DEMO2_BUSINESS_ID = '00000000-0000-4000-8000-000000000003'
+const DEMO2_USER_ID = '00000000-0000-4000-8000-000000000004'
+const DEMO_ADMIN_ID = '00000000-0000-4000-8000-000000000005'
 
-// Second commerce de demo, plus modeste, pour que l'espace admin ait
-// plusieurs commerces distincts a lister/comparer des le depart.
-seedAccount({
-  email: 'demo2@facture-ia.com',
-  password: 'password123',
-  businessName: 'Salon Beaute Demo',
-  seedSampleData: false
-})
+/**
+ * Sequence de demarrage complete : hydrate `businesses`/`users`/
+ * `platformAdmins` depuis Postgres (no-op si `DATABASE_URL` absente), puis
+ * seme les comptes de demo (ignore silencieusement ceux deja hydrates),
+ * puis persiste le resultat. Executee une seule fois par instance
+ * serverless (voir `ensureReady()` plus bas), avant de traiter la moindre
+ * requete.
+ */
+async function bootstrap() {
+  await db.hydrate(businesses, users, platformAdmins)
 
-// Compte administrateur plateforme de demo (super-admin : seul role pouvant
-// gerer les autres comptes admin).
-platformAdmins.push({
-  id: crypto.randomUUID(),
-  firstName: 'Admin',
-  lastName: 'Plateforme',
-  email: 'admin@facture-ia.com',
-  password: 'admin123',
-  role: 'super_admin',
-  isActive: true,
-  createdAt: now(),
-  updatedAt: now()
-})
+  await seedAccount({
+    email: 'demo@facture-ia.com',
+    password: 'password123',
+    businessName: 'Ma Boutique Demo',
+    seedSampleData: true,
+    businessId: DEMO_BUSINESS_ID,
+    userId: DEMO_USER_ID
+  })
+
+  // Second commerce de demo, plus modeste, pour que l'espace admin ait
+  // plusieurs commerces distincts a lister/comparer des le depart.
+  await seedAccount({
+    email: 'demo2@facture-ia.com',
+    password: 'password123',
+    businessName: 'Salon Beaute Demo',
+    seedSampleData: false,
+    businessId: DEMO2_BUSINESS_ID,
+    userId: DEMO2_USER_ID
+  })
+
+  // Compte administrateur plateforme de demo (super-admin : seul role
+  // pouvant gerer les autres comptes admin). Meme idempotence que
+  // `seedAccount` : ignore si deja hydrate depuis Postgres.
+  if (!platformAdmins.some((a) => a.id === DEMO_ADMIN_ID)) {
+    platformAdmins.push({
+      id: DEMO_ADMIN_ID,
+      firstName: 'Admin',
+      lastName: 'Plateforme',
+      email: 'admin@facture-ia.com',
+      passwordHash: await db.hashPassword('admin123'),
+      role: 'super_admin',
+      isActive: true,
+      createdAt: now(),
+      updatedAt: now()
+    })
+  }
+
+  await db.persistAll(businesses, users, platformAdmins)
+}
 
 // --- Helpers de reponse -----------------------------------------------------
 
@@ -838,10 +905,10 @@ function fail(res, status, code, message) {
 
 // --- Middleware d'authentification ------------------------------------------
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : null
-  const userId = token ? accessTokens.get(token) : null
+  const userId = token ? db.verifyToken(token, 'merchant', 'access') : null
 
   if (!userId) {
     fail(res, 401, 'UNAUTHORIZED', 'Session expiree ou invalide.')
@@ -854,31 +921,41 @@ function requireAuth(req, res, next) {
     return
   }
 
-  // Un compte desactive perd l'acces immediatement : le jeton est revoque
-  // ici au cas ou il aurait survecu (ex. desactive par un autre moyen que
-  // le PATCH ci-dessous, qui revoque deja explicitement).
-  if (user.isActive === false) {
-    accessTokens.delete(token)
-    fail(res, 401, 'ACCOUNT_DEACTIVATED', 'Ce compte a ete desactive.')
-    return
+  try {
+    // Un compte desactive perd l'acces immediatement : verifie EN DIRECT
+    // contre Postgres (pas seulement le tableau en memoire, potentiellement
+    // obsolete sur une autre instance serverless que celle qui a effectue
+    // la desactivation) a chaque requete authentifiee.
+    const liveActive = await db.isRecordActiveLive('users', userId)
+    if (!liveActive || user.isActive === false) {
+      fail(res, 401, 'ACCOUNT_DEACTIVATED', 'Ce compte a ete desactive.')
+      return
+    }
+
+    req.currentUser = user
+    req.currentBusiness = businesses.find((b) => b.id === user.businessId)
+
+    // Un commerce suspendu par un admin plateforme perd immediatement
+    // l'acces a l'API, quel que soit l'utilisateur qui essaie de s'y
+    // connecter. Meme verification en direct que ci-dessus.
+    if (req.currentBusiness) {
+      const liveSuspended = await db.isBusinessSuspendedLive(req.currentBusiness.id)
+      if (liveSuspended || req.currentBusiness.isSuspended) {
+        fail(
+          res,
+          403,
+          'BUSINESS_SUSPENDED',
+          'Ce commerce a ete suspendu. Contactez le support pour plus d\'informations.'
+        )
+        return
+      }
+    }
+
+    next()
+  } catch (err) {
+    console.error('requireAuth error:', err)
+    fail(res, 500, 'INTERNAL_ERROR', "Erreur interne lors de la verification de l'authentification.")
   }
-
-  req.currentUser = user
-  req.currentBusiness = businesses.find((b) => b.id === user.businessId)
-
-  // Un commerce suspendu par un admin plateforme perd immediatement l'acces
-  // a l'API, quel que soit l'utilisateur qui essaie de s'y connecter.
-  if (req.currentBusiness && req.currentBusiness.isSuspended) {
-    fail(
-      res,
-      403,
-      'BUSINESS_SUSPENDED',
-      'Ce commerce a ete suspendu. Contactez le support pour plus d\'informations.'
-    )
-    return
-  }
-
-  next()
 }
 
 /**
@@ -887,10 +964,10 @@ function requireAuth(req, res, next) {
  * distincte) : un jeton commercant ne fonctionne jamais sur une route
  * `/admin/*`, et reciproquement.
  */
-function requireAdminAuth(req, res, next) {
+async function requireAdminAuth(req, res, next) {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : null
-  const adminId = token ? adminAccessTokens.get(token) : null
+  const adminId = token ? db.verifyToken(token, 'admin', 'access') : null
 
   if (!adminId) {
     fail(res, 401, 'UNAUTHORIZED', 'Session administrateur expiree ou invalide.')
@@ -898,8 +975,23 @@ function requireAdminAuth(req, res, next) {
   }
 
   const admin = platformAdmins.find((a) => a.id === adminId)
-  if (!admin || !admin.isActive) {
+  if (!admin) {
     fail(res, 401, 'UNAUTHORIZED', 'Administrateur introuvable ou desactive.')
+    return
+  }
+
+  try {
+    // Verifie EN DIRECT contre Postgres (voir le meme raisonnement dans
+    // `requireAuth`) : une desactivation prend effet des la requete
+    // suivante, sur n'importe quelle instance serverless.
+    const liveActive = await db.isRecordActiveLive('platform_admins', adminId)
+    if (!liveActive || !admin.isActive) {
+      fail(res, 401, 'UNAUTHORIZED', 'Administrateur introuvable ou desactive.')
+      return
+    }
+  } catch (err) {
+    console.error('requireAdminAuth error:', err)
+    fail(res, 500, 'INTERNAL_ERROR', "Erreur interne lors de la verification de l'authentification.")
     return
   }
 
@@ -922,7 +1014,7 @@ function requireSuperAdmin(req, res, next) {
 
 // --- Auth ---------------------------------------------------------------
 
-app.post('/api/v1/auth/register', (req, res) => {
+app.post('/api/v1/auth/register', async (req, res) => {
   const { businessName, businessType, firstName, lastName, email, password } = req.body || {}
 
   if (!businessName || !firstName || !lastName || !email || !password) {
@@ -971,7 +1063,7 @@ app.post('/api/v1/auth/register', (req, res) => {
     firstName,
     lastName,
     email,
-    password,
+    passwordHash: await db.hashPassword(password),
     phone: undefined,
     role: 'owner',
     permissions: OWNER_PERMISSIONS,
@@ -997,11 +1089,11 @@ app.post('/api/v1/auth/register', (req, res) => {
   ok(res, { user: publicUser(user), business, tokens })
 })
 
-app.post('/api/v1/auth/login', (req, res) => {
+app.post('/api/v1/auth/login', async (req, res) => {
   const { email, password } = req.body || {}
   const user = users.find((u) => u.email.toLowerCase() === String(email || '').toLowerCase())
 
-  if (!user || user.password !== password) {
+  if (!user || !(await db.verifyPassword(password, user.passwordHash))) {
     fail(res, 401, 'INVALID_CREDENTIALS', 'Email ou mot de passe incorrect.')
     return
   }
@@ -1064,10 +1156,9 @@ app.post('/api/v1/auth/impersonate-exchange', (req, res) => {
   ok(res, { user: publicUser(user), business, tokens })
 })
 
-app.post('/api/v1/auth/logout', requireAuth, (req, res) => {
-  const header = req.headers.authorization || ''
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null
-  if (token) accessTokens.delete(token)
+// Avec des jetons JWT auto-suffisants, il n'y a rien a supprimer
+// cote serveur : le client se contente d'oublier ses jetons.
+app.post('/api/v1/auth/logout', requireAuth, (_req, res) => {
   ok(res, null)
 })
 
@@ -1075,16 +1166,23 @@ app.get('/api/v1/auth/me', requireAuth, (req, res) => {
   ok(res, { user: publicUser(req.currentUser), business: req.currentBusiness })
 })
 
-app.post('/api/v1/auth/refresh', (req, res) => {
+app.post('/api/v1/auth/refresh', async (req, res) => {
   const { refreshToken } = req.body || {}
-  const userId = refreshToken ? refreshTokens.get(refreshToken) : null
+  const userId = refreshToken ? db.verifyToken(refreshToken, 'merchant', 'refresh') : null
 
   if (!userId) {
     fail(res, 401, 'INVALID_REFRESH_TOKEN', 'Jeton de rafraichissement invalide.')
     return
   }
 
-  refreshTokens.delete(refreshToken)
+  // Un compte desactive ne doit pas pouvoir prolonger sa session via son
+  // jeton de rafraichissement, meme si celui-ci reste cryptographiquement
+  // valide (voir la meme verification dans `requireAuth`).
+  if (!(await db.isRecordActiveLive('users', userId))) {
+    fail(res, 401, 'ACCOUNT_DEACTIVATED', 'Ce compte a ete desactive.')
+    return
+  }
+
   const tokens = issueTokens(userId)
   ok(res, tokens)
 })
@@ -1103,13 +1201,13 @@ app.post('/api/v1/auth/reset-password', (req, res) => {
   ok(res, null)
 })
 
-app.post('/api/v1/auth/change-password', requireAuth, (req, res) => {
+app.post('/api/v1/auth/change-password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {}
-  if (req.currentUser.password !== currentPassword) {
+  if (!(await db.verifyPassword(currentPassword, req.currentUser.passwordHash))) {
     fail(res, 401, 'INVALID_PASSWORD', 'Mot de passe actuel incorrect.')
     return
   }
-  req.currentUser.password = newPassword
+  req.currentUser.passwordHash = await db.hashPassword(newPassword)
   ok(res, null)
 })
 
@@ -1118,9 +1216,9 @@ app.post('/api/v1/auth/change-password', requireAuth, (req, res) => {
  * passe (ce mock n'envoie aucun email reel — voir la note sur
  * `/auth/forgot-password` — donc pas de faux flux de confirmation par lien).
  */
-app.post('/api/v1/auth/change-email', requireAuth, (req, res) => {
+app.post('/api/v1/auth/change-email', requireAuth, async (req, res) => {
   const { newEmail, password } = req.body || {}
-  if (req.currentUser.password !== password) {
+  if (!(await db.verifyPassword(password, req.currentUser.passwordHash))) {
     fail(res, 401, 'INVALID_PASSWORD', 'Mot de passe incorrect.')
     return
   }
@@ -1218,12 +1316,9 @@ app.delete('/api/v1/users/me', requireAuth, (req, res) => {
   const userId = req.currentUser.id
   const index = users.findIndex((u) => u.id === userId)
   users.splice(index, 1)
-  for (const [token, id] of [...accessTokens.entries()]) {
-    if (id === userId) accessTokens.delete(token)
-  }
-  for (const [token, id] of [...refreshTokens.entries()]) {
-    if (id === userId) refreshTokens.delete(token)
-  }
+  // Rien a revoquer explicitement (jetons JWT auto-suffisants) : la
+  // suppression du compte fait echouer `isRecordActiveLive` sur sa
+  // prochaine requete (voir `requireAuth`).
 
   ok(res, null)
 })
@@ -4311,7 +4406,7 @@ app.get('/api/v1/users/:id', requireAuth, requirePermission('user:manage'), (req
   ok(res, publicUser(user))
 })
 
-app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), (req, res) => {
+app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), async (req, res) => {
   const payload = req.body || {}
   const errors = validateInvitePayload(payload)
   if (Object.keys(errors).length > 0) {
@@ -4336,7 +4431,7 @@ app.post('/api/v1/users', requireAuth, requirePermission('user:manage'), (req, r
     // Pas de flux d'invitation par email dans ce serveur factice : le mot
     // de passe temporaire est renvoye une fois dans la reponse pour que le
     // proprietaire le transmette lui-meme (voir UserCredentialsDialog.vue).
-    password: temporaryPassword,
+    passwordHash: await db.hashPassword(temporaryPassword),
     phone: payload.phone || undefined,
     role,
     permissions: ROLE_PERMISSIONS[role] || [],
@@ -4426,7 +4521,7 @@ app.post(
   '/api/v1/users/:id/reset-password',
   requireAuth,
   requirePermission('user:manage'),
-  (req, res) => {
+  async (req, res) => {
     const user = findTeamMember(req)
     if (!user) {
       fail(res, 404, 'NOT_FOUND', 'Utilisateur introuvable.')
@@ -4442,9 +4537,8 @@ app.post(
     }
 
     const temporaryPassword = generateTemporaryPassword()
-    user.password = temporaryPassword
+    user.passwordHash = await db.hashPassword(temporaryPassword)
     user.updatedAt = now()
-    revokeUserTokens(user.id)
 
     ok(res, { ...publicUser(user), temporaryPassword })
   }
@@ -4679,10 +4773,6 @@ app.get('/api/v1/business/export', requireAuth, requirePermission('settings:mana
  * definitive depuis l'espace admin.
  */
 function deleteBusinessCascade(businessId) {
-  const businessUserIds = new Set(
-    users.filter((u) => u.businessId === businessId).map((u) => u.id)
-  )
-
   const removeAll = (arr, predicate) => {
     for (let i = arr.length - 1; i >= 0; i--) {
       if (predicate(arr[i])) arr.splice(i, 1)
@@ -4706,13 +4796,9 @@ function deleteBusinessCascade(businessId) {
   removeAll(adminAuditLog, (a) => a.businessId === businessId)
   removeAll(users, (u) => u.businessId === businessId)
   removeAll(businesses, (b) => b.id === businessId)
-
-  for (const [token, userId] of [...accessTokens.entries()]) {
-    if (businessUserIds.has(userId)) accessTokens.delete(token)
-  }
-  for (const [token, userId] of [...refreshTokens.entries()]) {
-    if (businessUserIds.has(userId)) refreshTokens.delete(token)
-  }
+  // Rien a revoquer explicitement (jetons JWT auto-suffisants) : la
+  // suppression du commerce/des utilisateurs fait echouer `isRecordActiveLive`
+  // sur leur prochaine requete (voir `requireAuth`).
 }
 
 /**
@@ -4946,15 +5032,14 @@ app.post(
 // --- Espace admin plateforme -------------------------------------------
 
 function issueAdminTokens(adminId) {
-  const accessToken = crypto.randomUUID()
-  const refreshToken = crypto.randomUUID()
-  adminAccessTokens.set(accessToken, adminId)
-  adminRefreshTokens.set(refreshToken, adminId)
-  return { accessToken, refreshToken }
+  return {
+    accessToken: db.signAccessToken(adminId, 'admin'),
+    refreshToken: db.signRefreshToken(adminId, 'admin')
+  }
 }
 
 function publicAdmin(admin) {
-  const { password, ...rest } = admin
+  const { passwordHash, ...rest } = admin
   return rest
 }
 
@@ -5048,13 +5133,13 @@ function computePlatformStats() {
   }
 }
 
-app.post('/api/v1/admin/auth/login', (req, res) => {
+app.post('/api/v1/admin/auth/login', async (req, res) => {
   const { email, password } = req.body || {}
   const admin = platformAdmins.find(
     (a) => a.email.toLowerCase() === String(email || '').toLowerCase()
   )
 
-  if (!admin || admin.password !== password) {
+  if (!admin || !(await db.verifyPassword(password, admin.passwordHash))) {
     fail(res, 401, 'INVALID_CREDENTIALS', 'Email ou mot de passe incorrect.')
     return
   }
@@ -5075,10 +5160,9 @@ app.post('/api/v1/admin/auth/login', (req, res) => {
   ok(res, { admin: publicAdmin(admin), tokens })
 })
 
-app.post('/api/v1/admin/auth/logout', requireAdminAuth, (req, res) => {
-  const header = req.headers.authorization || ''
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null
-  if (token) adminAccessTokens.delete(token)
+// Avec des jetons JWT auto-suffisants, il n'y a rien a supprimer
+// cote serveur : le client se contente d'oublier ses jetons.
+app.post('/api/v1/admin/auth/logout', requireAdminAuth, (_req, res) => {
   ok(res, null)
 })
 
@@ -5086,16 +5170,20 @@ app.get('/api/v1/admin/auth/me', requireAdminAuth, (req, res) => {
   ok(res, publicAdmin(req.currentAdmin))
 })
 
-app.post('/api/v1/admin/auth/refresh', (req, res) => {
+app.post('/api/v1/admin/auth/refresh', async (req, res) => {
   const { refreshToken } = req.body || {}
-  const adminId = refreshToken ? adminRefreshTokens.get(refreshToken) : null
+  const adminId = refreshToken ? db.verifyToken(refreshToken, 'admin', 'refresh') : null
 
   if (!adminId) {
     fail(res, 401, 'INVALID_REFRESH_TOKEN', 'Jeton de rafraichissement invalide.')
     return
   }
 
-  adminRefreshTokens.delete(refreshToken)
+  if (!(await db.isRecordActiveLive('platform_admins', adminId))) {
+    fail(res, 401, 'UNAUTHORIZED', 'Administrateur introuvable ou desactive.')
+    return
+  }
+
   const tokens = issueAdminTokens(adminId)
   ok(res, tokens)
 })
@@ -5407,7 +5495,7 @@ app.patch('/api/v1/admin/plans/:id', requireAdminAuth, (req, res) => {
 // --- Gestion des administrateurs (super-admin uniquement pour les mutations) ---
 
 function publicAdminSummary(admin) {
-  const { password, ...rest } = admin
+  const { passwordHash, ...rest } = admin
   return rest
 }
 
@@ -5433,7 +5521,7 @@ function validateAdminInvitePayload(payload) {
   return errors
 }
 
-app.post('/api/v1/admin/admins', requireAdminAuth, requireSuperAdmin, (req, res) => {
+app.post('/api/v1/admin/admins', requireAdminAuth, requireSuperAdmin, async (req, res) => {
   const payload = req.body || {}
   const errors = validateAdminInvitePayload(payload)
   if (Object.keys(errors).length > 0) {
@@ -5452,7 +5540,8 @@ app.post('/api/v1/admin/admins', requireAdminAuth, requireSuperAdmin, (req, res)
     firstName: payload.firstName.trim(),
     lastName: payload.lastName.trim(),
     email: payload.email.trim(),
-    password: crypto.randomUUID(), // pas de flux d'invitation par email dans ce serveur factice
+    // pas de flux d'invitation par email dans ce serveur factice
+    passwordHash: await db.hashPassword(crypto.randomUUID()),
     role: payload.role === 'super_admin' ? 'super_admin' : 'support',
     isActive: true,
     createdAt: now(),
@@ -5486,15 +5575,9 @@ app.patch('/api/v1/admin/admins/:id', requireAdminAuth, requireSuperAdmin, (req,
 
   if (payload.role) admin.role = payload.role
   if (Object.prototype.hasOwnProperty.call(payload, 'isActive')) {
+    // Rien a revoquer explicitement (jetons JWT auto-suffisants) : voir
+    // `isRecordActiveLive` dans `requireAdminAuth`.
     admin.isActive = Boolean(payload.isActive)
-    if (!admin.isActive) {
-      for (const [token, adminId] of [...adminAccessTokens.entries()]) {
-        if (adminId === admin.id) adminAccessTokens.delete(token)
-      }
-      for (const [token, adminId] of [...adminRefreshTokens.entries()]) {
-        if (adminId === admin.id) adminRefreshTokens.delete(token)
-      }
-    }
   }
   admin.updatedAt = now()
 
@@ -5824,12 +5907,45 @@ app.patch('/api/v1/admin/support/tickets/:id/status', requireAdminAuth, (req, re
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 
-// En local : démarre le serveur. Sur Vercel : exporte l'app pour le handler serverless.
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Mock backend Facture IA sur http://localhost:${PORT}`)
-    console.log("Compte de demo (avec donnees d'exemple): demo@facture-ia.com / password123")
-  })
+/**
+ * `bootstrap()` (hydratation Postgres + seed des comptes de demo) doit
+ * avoir termine avant de traiter la moindre requete. Memorise dans une
+ * promesse module-scope plutot que rappelee a chaque requete : une
+ * instance serverless la resout une seule fois puis la reutilise pour
+ * toutes les requetes suivantes qu'elle traite tant qu'elle reste chaude.
+ */
+let readyPromise = null
+function ensureReady() {
+  if (!readyPromise) readyPromise = bootstrap()
+  return readyPromise
 }
 
-module.exports = app
+// En local : hydrate/seed puis demarre le serveur. Sur Vercel : `ensureReady()`
+// est plutot attendue par le handler exporte ci-dessous, a chaque invocation
+// froide.
+if (require.main === module) {
+  ensureReady()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Mock backend Facture IA sur http://localhost:${PORT}`)
+        console.log("Compte de demo (avec donnees d'exemple): demo@facture-ia.com / password123")
+        console.log(
+          db.persistenceEnabled
+            ? 'Persistance Postgres active (DATABASE_URL detectee).'
+            : 'Persistance Postgres INACTIVE (DATABASE_URL absente) : commerces/utilisateurs/admins en memoire uniquement.'
+        )
+      })
+    })
+    .catch((err) => {
+      console.error('Echec du demarrage:', err)
+      process.exit(1)
+    })
+}
+
+// Sur Vercel, l'app Express elle-meme est exportee (pas juste `(req,res)=>`)
+// pour ne pas perdre son integration native avec `express.static`/multer,
+// mais on attend d'abord `ensureReady()` a chaque invocation.
+module.exports = async (req, res) => {
+  await ensureReady()
+  app(req, res)
+}
